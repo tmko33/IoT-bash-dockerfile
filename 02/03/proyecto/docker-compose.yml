@@ -1,0 +1,28 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    container_name: web_service
+    ports:
+      - "8080:80"
+    volumes:
+      - ./shared_logs:/var/log/nginx/shared
+    networks:
+      - internal_net
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.ubuntu
+    container_name: worker_service
+    volumes:
+      - ./shared_logs:/workspace/logs:ro
+    networks:
+      - internal_net
+    depends_on:
+      - web
+
+networks:
+  internal_net:
+    driver: bridge

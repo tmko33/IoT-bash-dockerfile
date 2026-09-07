@@ -1,0 +1,7 @@
+===== REPORTE DE INCIDENTES (access.log) =====
+1. Cantidad total de registros : 10
+2. Cantidad de errores         : 3
+3. Cantidad de advertencias    : 1
+4. Usuario con más errores     : user=juan (3 fallos)
+5. IP con más errores          : ip=192.168.1.15 (3 fallos)
+==============================================

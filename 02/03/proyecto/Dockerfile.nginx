@@ -1,0 +1,6 @@
+FROM nginx:alpine
+RUN mkdir -p /var/log/nginx/shared
+COPY html/ /usr/share/nginx/html/
+# Redireccionar logs de Nginx hacia el directorio compartido
+RUN sed -i 's|/var/log/nginx/access.log|/var/log/nginx/shared/access.log|g' /etc/nginx/nginx.conf \
+    && sed -i 's|/var/log/nginx/error.log|/var/log/nginx/shared/error.log|g' /etc/nginx/nginx.conf
