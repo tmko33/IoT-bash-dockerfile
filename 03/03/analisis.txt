@@ -1,0 +1,88 @@
+Respuestas de Análisis
+¿Dónde se encuentra el estado del negocio?
+
+El estado reside exclusivamente en el volumen 
+persistente de la base de datos PostgreSQL 
+(pgdata:/var/lib/postgresql/data). Los 
+contenedores Flask no retienen en memoria 
+ninguna información sobre transacciones, 
+sesiones o catálogos entre una petición y otra.
+
+¿Por qué las APIs pueden ser stateless?
+
+Porque desacoplan por completo el cómputo del 
+almacenamiento. Cada petición HTTP transporta 
+todo el contexto requerido para ejecutarse y 
+la lógica de negocio lee/escribe en la base 
+de datos en tiempo real. Esto permite que 
+cualquier solicitud sea atendida indistintamente
+por api-1, api-2 o api-3 sin requerir 
+sincronización de memoria ni sesiones 
+pegajosas (sticky sessions).
+
+¿Qué ocurre si una API reinicia?
+
+El impacto es prácticamente nulo. Al ser 
+stateless, no se pierden datos en memoria; 
+el balanceador Nginx redirige el tráfico a 
+las réplicas restantes mientras el contenedor
+se recupera y, una vez en línea, vuelve a 
+recibir tráfico de forma transparente.
+
+¿Qué ocurre si PostgreSQL reinicia?
+
+Se produce una caída general del servicio
+(Service Outage). Las APIs Flask fallarán
+al intentar abrir sockets TCP contra el 
+host db, arrojando errores 500 Internal 
+Server Error. Sin embargo, gracias al 
+volumen Docker pgdata, la integridad 
+de los datos permanece intacta una vez 
+que el motor de base de datos completa 
+su secuencia de recuperación WAL (Write-Ahead Logging).
+
+¿Dónde existen puntos únicos de falla (SPOF)?
+
+Existen dos SPOF principales:
+
+Nginx: Si el proxy inverso colapsa, se pierde 
+la puerta de entrada para los clientes.
+
+PostgreSQL: Si la base de datos falla, ninguna
+de las APIs puede operar, ya que dependen de 
+una única instancia centralizada.
+
+¿El balanceamiento de API soluciona el escalamiento de la base de datos?
+
+No. De hecho, incrementa la contención sobre 
+ella. Balancear las APIs escala la capa de 
+cómputo (concurrencia HTTP, serialización JSON, 
+reglas de validación), pero satura a PostgreSQL 
+con un mayor número de conexiones concurrentes 
+y locks sobre tablas compartidas. Escalar la 
+capa de datos requiere estrategias independientes 
+(pools de conexiones con PgBouncer, réplicas de 
+solo lectura, particionamiento o sharding).
+
+¿Qué mecanismos podrían añadirse en una arquitectura de producción?
+
+Connection Pooling: Integrar PgBouncer para 
+reutilizar conexiones a la base de datos y 
+evitar el agotamiento de sockets.
+
+Servidor WSGI de grado productivo: Sustituir 
+el servidor de desarrollo de Flask por Gunicorn 
+o Uvicorn con múltiples workers pre-fork.
+
+Caché en memoria (Redis): Cachear consultas de 
+lectura frecuentes (GET /products) para reducir 
+lecturas a disco en PostgreSQL.
+
+Base de datos de alta disponibilidad: 
+Implementar replicación primaria/secundaria 
+con failover automático (vía Patroni) o 
+utilizar servicios gestionados (AWS RDS Multi-AZ).
+
+Monitoreo y Circuit Breakers: Añadir sondas 
+de salud activas (liveness/readiness probes) 
+y métricas con Prometheus/Grafana.

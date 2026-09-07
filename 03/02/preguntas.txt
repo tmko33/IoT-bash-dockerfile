@@ -1,0 +1,17 @@
+Explicación Escrita de la Diferencia entre Ambos Escenarios
+
+Un Reverse Proxy con Routing resuelve un problema de organización arquitectónica 
+y seguridad perimetral: permite que clientes externos consuman múltiples 
+microservicios heterogéneos bajo un mismo dominio y puerto estándar, 
+protegiendo la topología interna y evitando problemas de CORS 
+(Cross-Origin Resource Sharing). Sin embargo, esto no implica balanceamiento, 
+ya que todas las solicitudes a una ruta específica terminan invariablemente en 
+un único proceso backend.
+
+Por su parte, el Load Balancing resuelve un problema de capacidad y 
+disponibilidad: introduce redundancia horizontal asociando un conjunto de 
+instancias idénticas bajo un bloque upstream. La combinación de ambos
+patrones en Nginx permite que una API Gateway opere de forma híbrida: 
+discrimina qué servicio debe atender la petición mediante su ruta URL y, 
+a renglón seguido, selecciona mediante algoritmos de rotación cuál réplica 
+específica de ese servicio procesará la carga de trabajo.

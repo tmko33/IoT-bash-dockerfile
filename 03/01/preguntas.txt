@@ -1,34 +1,77 @@
 1. ¿Por qué el cliente solamente conoce localhost:8080?
 
-Porque Nginx actúa como un Reverse Proxy (Proxy Inverso) y punto único de entrada (single entry point). El cliente interactúa exclusivamente con el puerto público expuesto por el proxy (8080), el cual desacopla la arquitectura interna: los clientes no necesitan (ni deben por seguridad) conocer las direcciones IP privadas, los puertos internos (5000) ni la cantidad de réplicas que componen el backend.
+Porque Nginx actúa como un Reverse Proxy (Proxy Inverso) 
+y punto único de entrada (single entry point). El 
+cliente interactúa exclusivamente con el puerto público
+expuesto por el proxy (8080), el cual desacopla la
+arquitectura interna: los clientes no necesitan 
+(ni deben por seguridad) conocer las direcciones IP 
+privadas, los puertos internos (5000) ni la cantidad 
+de réplicas que componen el backend.
 
 2. ¿Qué función cumple upstream?
 
-La directiva upstream define un pool o grupo virtual de servidores backend dentro de Nginx. Permite agrupar múltiples destinos de red (en este caso api1:5000, api2:5000, api3:5000) bajo un único alias lógico (flask_backend), sobre el cual la directiva proxy_pass puede delegar y balancear el tráfico entrante.
+La directiva upstream define un pool o grupo virtual de 
+servidores backend dentro de Nginx. Permite agrupar 
+múltiples destinos de red (en este caso api1:5000, 
+api2:5000, api3:5000) bajo un único alias lógico 
+(flask_backend), sobre el cual la directiva 
+proxy_pass puede delegar y balancear el tráfico entrante.
 
 3. ¿Qué estrategia utiliza Nginx por defecto en este escenario?
 
-Utiliza Round Robin ponderado de forma equitativa (1:1). Asigna cada nueva solicitud entrante a la siguiente instancia de la lista en una rotación circular secuencial (api1 → api2 → api3 → api1...).
+Utiliza Round Robin ponderado de forma equitativa 
+(1:1). Asigna cada nueva solicitud entrante a la 
+siguiente instancia de la lista en una rotación 
+circular secuencial (api1 → api2 → api3 → api1...).
 
 4. ¿Qué ocurre al detener api2?
 
-Nginx detecta un fallo en la conexión a nivel de socket (connection refused o timeout). Gracias a su mecanismo de passive health check, Nginx marca temporalmente a api2 como no disponible y reintenta de inmediato la petición con el siguiente nodo funcional del grupo. La carga se redistribuye equitativamente entre los nodos sanos restantes (api1 y api3) sin arrojar errores 502 Bad Gateway al cliente.
+Nginx detecta un fallo en la conexión a nivel de 
+socket (connection refused o timeout). Gracias a 
+su mecanismo de passive health check, Nginx marca 
+temporalmente a api2 como no disponible y reintenta 
+de inmediato la petición con el siguiente nodo 
+funcional del grupo. La carga se redistribuye 
+equitativamente entre los nodos sanos restantes 
+(api1 y api3) sin arrojar errores 502 Bad Gateway
+al cliente.
 
 5. ¿Qué componente podría convertirse en un punto único de falla (SPOF)?
 
-El contenedor de Nginx. Si Nginx colapsa, se detiene o se satura a nivel de red, todo el sistema queda inaccesible para los clientes finales, sin importar que las instancias de Flask subyacentes sigan operativas y saludables. En entornos de producción reales se mitiga con Nginx redundantes usando IPs virtuales (Keepalived/VRRP) o balanceadores gestionados en la nube (AWS ALB, GCP Cloud Load Balancing).
+El contenedor de Nginx. Si Nginx colapsa, se 
+detiene o se satura a nivel de red, todo el 
+sistema queda inaccesible para los clientes 
+finales, sin importar que las instancias de 
+Flask subyacentes sigan operativas y saludables.
+En entornos de producción reales se mitiga 
+con Nginx redundantes usando IPs virtuales 
+(Keepalived/VRRP) o balanceadores gestionados 
+en la nube (AWS ALB, GCP Cloud Load Balancing).
 
 6. ¿Por qué este diseño representa escalamiento horizontal?
 
-Porque la capacidad de procesamiento del sistema se incrementa añadiendo más nodos o réplicas independientes en paralelo (scale out), en lugar de asignarle más CPU o memoria a un solo contenedor (scale up / escalamiento vertical). Esto permite repartir la concurrencia y tolerar la caída de nodos individuales sin interrumpir el servicio.
+Porque la capacidad de procesamiento del sistema 
+se incrementa añadiendo más nodos o réplicas 
+independientes en paralelo (scale out), en lugar 
+de asignarle más CPU o memoria a un solo contenedor
+(scale up / escalamiento vertical). Esto permite 
+repartir la concurrencia y tolerar la caída de 
+nodos individuales sin interrumpir el servicio.
 
 7. ¿Qué tendría que cambiar para tener cinco instancias?
 
 Se requieren modificaciones en dos archivos:
 
-En docker-compose.yml: Declarar los dos nuevos servicios (api4 y api5) usando la misma imagen o contexto de build, configurando sus variables de entorno respectivas (INSTANCE: api-4 e INSTANCE: api-5), y agregarlos a la directiva depends_on de Nginx.
+En docker-compose.yml: Declarar los dos nuevos 
+servicios (api4 y api5) usando la misma imagen 
+o contexto de build, configurando sus variables
+de entorno respectivas (INSTANCE: api-4 e 
+INSTANCE: api-5), y agregarlos a la directiva 
+depends_on de Nginx.
 
-En nginx/nginx.conf: Añadir los dos nuevos servidores dentro del bloque upstream flask_backend:
+En nginx/nginx.conf: Añadir los dos nuevos 
+servidores dentro del bloque upstream flask_backend:
 
 Nginx
 upstream flask_backend {

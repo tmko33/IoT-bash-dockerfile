@@ -1,0 +1,72 @@
+Respuestas a las Preguntas
+¿Por qué el cambio aparece sin reconstruir la imagen?
+
+Porque se está utilizando un bind mount 
+(./html:/usr/share/nginx/html:ro). El 
+directorio del contenedor no es una 
+copia estática embebida en la imagen, 
+sino un enlace directo al directorio '
+del host. Cuando el archivo se edita 
+en la máquina anfitriona, Nginx lee 
+los cambios directamente del sistema 
+de archivos sin requerir un nuevo 
+ciclo de build.
+
+¿Qué función cumple :ro?
+
+Establece el montaje en modo solo lectura 
+(read-only). Evita que los procesos 
+internos del contenedor Nginx puedan 
+alterar, crear o borrar archivos en 
+la carpeta html/ del sistema anfitrión,
+aplicando el principio de mínimo privilegio.
+
+¿Cuál es la diferencia entre el puerto 8080 y el 80?
+
+El puerto 80 es el puerto de red interno 
+del contenedor donde el servidor Nginx 
+escucha tráfico HTTP de manera predeterminada.
+El puerto 8080 es el puerto del host que 
+queda abierto al tráfico externo; Docker 
+redirige las peticiones que llegan al host
+en el puerto 8080 hacia el puerto 80 del contenedor.
+
+¿Qué parte representa el host y qué parte representa el contenedor?
+
+En la sintaxis "8080:80", el lado izquierdo (8080) 
+corresponde al host y el lado derecho (80) al 
+contenedor. La misma regla aplica a los volúmenes
+(./html = host, /usr/share/nginx/html = contenedor).
+
+
+Pregunta de Diseño
+
+
+¿Por qué Docker Compose resulta más conveniente que ejecutar manualmente varios docker run cuando un sistema comienza a tener múltiples servicios?
+
+Gestión declarativa y versionable (IaC): La topología 
+completa de la aplicación (redes, volúmenes, dependencias,
+variables de entorno y mapeos de puertos) se centraliza 
+en un único archivo docker-compose.yml que puede incluirse
+en repositorios Git, eliminando la necesidad de recordar 
+secuencias extensas de comandos en consola.
+
+Redes y resolución DNS automática: Compose crea 
+automáticamente una red virtual aislada donde 
+cada contenedor puede comunicarse con los demás 
+usando el nombre del servicio como hostname 
+(e.g., curl http://web), sin tener que configurar
+flags --network ni enlazar IPs manualmente en 
+cada docker run.
+
+Control del ciclo de vida unificado: Permite 
+levantar (docker compose up), reconstruir 
+(--build) o destruir (docker compose down) 
+clústeres de servicios complejos con una sola
+orden, garantizando además el orden correcto
+de inicialización mediante directivas como depends_on.
+
+Reproducibilidad en entornos de desarrollo y staging: 
+Garantiza que cualquier miembro del equipo despliegue 
+exactamente la misma arquitectura sin incurrir en fallas
+humanas derivadas de flags omitidos o puertos mal configurados.

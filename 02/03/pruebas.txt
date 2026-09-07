@@ -1,0 +1,135 @@
+  docker compose up -d
+[+] up 1/1
+ ✔ Container 03-web-1 Started                                                               0.2s
+  docker compose ps
+NAME       IMAGE     COMMAND                  SERVICE   CREATED         STATUS         PORTS
+03-web-1   03-web    "/docker-entrypoint.…"   web       3 seconds ago   Up 2 seconds   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+  curl -I http://localhost:8080
+HTTP/1.1 200 OK
+Server: nginx/1.31.5
+Date: Mon, 07 Sep 2026 21:05:39 GMT
+Content-Type: text/html
+Content-Length: 350
+Last-Modified: Mon, 07 Sep 2026 04:32:20 GMT
+Connection: keep-alive
+ETag: "6a9e3e54-15e"
+Accept-Ranges: bytes
+
+  docker compose logs -f web
+web-1  | /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+web-1  | /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+web-1  | 10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+web-1  | /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+web-1  | /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+web-1  | /docker-entrypoint.sh: Configuration complete; ready for start up
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: using the "epoll" event method
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: nginx/1.31.5
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: OS: Linux 7.2.3-arch1-2
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: start worker processes
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: start worker process 30
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: start worker process 31
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: start worker process 32
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: start worker process 33
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: start worker process 34
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: start worker process 35
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: start worker process 36
+web-1  | 2026/09/07 21:05:31 [notice] 1#1: start worker process 37
+web-1  | 172.19.0.1 - - [07/Sep/2026:21:05:39 +0000] "HEAD / HTTP/1.1" 200 0 "-" "curl/8.22.0" "-"
+^Zfish: Job 4, 'docker compose logs -f web' has stopped
+  docker compose down
+[+] down 2/2
+ ✔ Container 03-web-1 Removed                                                               0.2s
+ ✔ Network 03_default Removed 
+
+
+ mkdir -p shared_logs
+  docker compose up --build -d
+WARN[0000] buildx Docker CLI plugin not found: falling back to the classic builder. BuildKit-only build features (multi-arch, secrets, ssh, additional contexts, ...) will not be available 
+Sending build context to Docker daemon  2.224kB
+Step 1/5 : FROM nginx:alpine
+ ---> 72ba65eb42c1
+Step 2/5 : RUN mkdir -p /var/log/nginx/shared
+ ---> Using cache
+ ---> bebd787f911f
+Step 3/5 : COPY html/ /usr/share/nginx/html/
+ ---> Using cache
+ ---> 2ed8480802de
+Step 4/5 : RUN sed -i 's|/var/log/nginx/access.log|/var/log/nginx/shared/access.log|g' /etc/nginx/nginx.conf     && sed -i 's|/var/log/nginx/error.log|/var/log/nginx/shared/error.log|g' /etc/nginx/nginx.conf
+ ---> Using cache
+ ---> 29e6ffd41068
+Step 5/5 : LABEL com.docker.compose.image.builder=classic
+ ---> Using cache
+ ---> ffe535221c0a
+Successfully built ffe535221c0a
+Successfully tagged proyecto-web:latest
+Sending build context to Docker daemon  2.224kB
+Step 1/7 : FROM ubuntu:latest
+ ---> 2260313b31c8
+Step 2/7 : RUN apt-get update && apt-get install -y     bash     coreutils     gawk     grep     procps     && rm -rf /var/lib/apt/lists/*
+ ---> Using cache
+ ---> 0af40d3e52b6
+Step 3/7 : WORKDIR /workspace
+ ---> Using cache
+ ---> f3efafd5a62b
+Step 4/7 : COPY scripts/ /workspace/
+ ---> Using cache
+ ---> 6d92fa741c2f
+Step 5/7 : RUN chmod +x /workspace/*.sh
+ ---> Using cache
+ ---> e1e4422f200e
+Step 6/7 : CMD ["tail", "-f", "/dev/null"]
+ ---> Using cache
+ ---> 0c4a87ccafa3
+Step 7/7 : LABEL com.docker.compose.image.builder=classic
+ ---> Using cache
+ ---> 5475ceab95c8
+Successfully built 5475ceab95c8
+Successfully tagged proyecto-worker:latest
+[+] up 4/4
+ ✔ Image proyecto-web       Built                                                           0.1s
+ ✔ Image proyecto-worker    Built                                                           0.1s
+ ✔ Container worker_service Running                                                         0.0s
+ ✔ Container web_service    Started                                                         0.4s
+  docker compose ps
+NAME             IMAGE             COMMAND                  SERVICE   CREATED         STATUS          PORTS
+web_service      proyecto-web      "/docker-entrypoint.…"   web       4 seconds ago   Up 4 seconds    0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+worker_service   proyecto-worker   "tail -f /dev/null"      worker    16 hours ago    Up 47 seconds   
+  curl http://localhost:8080
+  curl http://localhost:8080/ruta_inexistente
+<html>
+<head><title>404 Not Found</title></head>
+<body>
+<center><h1>404 Not Found</h1></center>
+<hr><center>nginx/1.31.5</center>
+</body>
+</html>
+  docker compose exec worker ./monitor.sh
+=== REPORTE DE ESTADO DEL CONTENEDOR ===
+Hostname : 4f0eb417f597
+Usuario  : root
+Fecha    : 2026-09-07 21:10:02
+Directorio: /workspace
+
+Uso de disco:
+Filesystem      Size  Used Avail Use% Mounted on
+overlay          69G   56G  9.2G  86% /
+
+Procesos activos:
+5
+=== FIN DEL DIAGNÓSTICO ===
+  docker compose exec worker ./analiza.sh logs/access.log
+=== ANÁLISIS DE REGISTROS EN TIEMPO REAL (logs/access.log) ===
+Total de accesos registrados : 9
+Errores detectados           : 2
+Últimos registros:
+172.21.0.1 - - [07/Sep/2026:21:09:52 +0000] "GET / HTTP/1.1" 200 0 "-" "curl/8.22.0" "-"
+172.21.0.1 - - [07/Sep/2026:21:09:52 +0000] "GET / HTTP/1.1" 200 0 "-" "curl/8.22.0" "-"
+172.21.0.1 - - [07/Sep/2026:21:09:52 +0000] "GET / HTTP/1.1" 200 0 "-" "curl/8.22.0" "-"
+172.21.0.1 - - [07/Sep/2026:21:09:53 +0000] "GET / HTTP/1.1" 200 0 "-" "curl/8.22.0" "-"
+172.21.0.1 - - [07/Sep/2026:21:09:57 +0000] "GET /ruta_inexistente HTTP/1.1" 404 153 "-" "curl/8.22.0" "-"
+󰪢 0s 󰉋 → .../03/proyecto 󰜥 󰘬 main 

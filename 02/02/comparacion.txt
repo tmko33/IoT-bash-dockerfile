@@ -1,0 +1,34 @@
+Preguntas de Análisis
+¿Cuál instrucción se comporta como valor por defecto?
+
+CMD. Su contenido actúa como un marcador de posición 
+que se descarta automáticamente si el usuario 
+especifica cualquier argumento en docker run.
+
+¿Cuál instrucción define el programa principal del contenedor?
+
+ENTRYPOINT. Determina el proceso raíz inmutable 
+(PID 1) que encapsula la función del contenedor.
+
+¿Qué sucede con CMD cuando se pasa un comando al final de docker run?
+
+Se invalida y es reemplazado en su totalidad por los 
+argumentos provistos por el usuario en la línea de comandos.
+
+¿Por qué ENTRYPOINT es útil cuando queremos que el contenedor se comporte como una herramienta concreta?
+
+Porque transforma el contenedor en un ejecutable 
+autocontenido (CLI o binario empaquetado). El 
+usuario no necesita saber qué binario interno 
+ejecuta la imagen ni su ruta en el sistema de 
+archivos; basta con invocar el contenedor 
+pasándole parámetros tal como si fuera un 
+comando nativo del host.
+
+¿Qué combinación utilizaría para crear un script que tenga un ejecutable fijo pero permita modificar parámetros?
+
+La combinación ENTRYPOINT + CMD (en formato exec / JSON array):
+
+ENTRYPOINT ["/ruta/a/mi_script.sh"] (ejecutable fijo que nunca cambia).
+
+CMD ["--opcion-default", "valor"] (argumentos predeterminados que el usuario puede sobrescribir en tiempo de ejecución sin alterar el script base).

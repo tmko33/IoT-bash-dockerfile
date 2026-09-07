@@ -1,0 +1,97 @@
+docker compose up -d
+[+] up 4/4
+ ✔ Container taller-load-balancer-api2-1  Started                                           0.4s
+ ✔ Container taller-load-balancer-api3-1  Started                                           0.5s
+ ✔ Container taller-load-balancer-api1-1  Started                                           0.7s
+ ✔ Container taller-load-balancer-nginx-1 Started                                           0.8s
+  docker compose ps
+NAME                           IMAGE                       COMMAND                  SERVICE   CREATED         STATUS         PORTS
+taller-load-balancer-api1-1    taller-load-balancer-api1   "python app.py"          api1      5 seconds ago   Up 4 seconds   5000/tcp
+taller-load-balancer-api2-1    taller-load-balancer-api2   "python app.py"          api2      5 seconds ago   Up 4 seconds   5000/tcp
+taller-load-balancer-api3-1    taller-load-balancer-api3   "python app.py"          api3      5 seconds ago   Up 4 seconds   5000/tcp
+taller-load-balancer-nginx-1   nginx:alpine                "/docker-entrypoint.…"   nginx     5 seconds ago   Up 4 seconds   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+  for i in (seq 1 6); curl -s http://localhost:8080/health; echo ""; end
+{"instance":"api-1","status":"ok"}
+
+{"instance":"api-1","status":"ok"}
+
+{"instance":"api-1","status":"ok"}
+
+{"instance":"api-1","status":"ok"}
+
+{"instance":"api-1","status":"ok"}
+
+{"instance":"api-1","status":"ok"}
+
+  for i in (seq 1 6); curl -s http://localhost:8080/health; echo ""; end
+{"instance":"api-1","status":"ok"}
+
+{"instance":"api-1","status":"ok"}
+
+{"instance":"api-2","status":"ok"}
+
+{"instance":"api-3","status":"ok"}
+
+{"instance":"api-1","status":"ok"}
+
+{"instance":"api-2","status":"ok"}
+
+  for i in (seq 1 12); curl -s http://localhost:8080/; echo; end
+{"instance":"api-3","message":"Hola desde Flask"}
+
+{"instance":"api-1","message":"Hola desde Flask"}
+
+{"instance":"api-2","message":"Hola desde Flask"}
+
+{"instance":"api-3","message":"Hola desde Flask"}
+
+{"instance":"api-1","message":"Hola desde Flask"}
+
+{"instance":"api-2","message":"Hola desde Flask"}
+
+{"instance":"api-3","message":"Hola desde Flask"}
+
+{"instance":"api-1","message":"Hola desde Flask"}
+
+{"instance":"api-2","message":"Hola desde Flask"}
+
+{"instance":"api-3","message":"Hola desde Flask"}
+
+{"instance":"api-1","message":"Hola desde Flask"}
+
+{"instance":"api-2","message":"Hola desde Flask"}
+
+  docker compose stop api2
+[+] stop 1/1
+ ✔ Container taller-load-balancer-api2-1 Stopped                                           10.1s
+  for i in (seq 1 6); curl -s http://localhost:8080/; echo; end
+{"instance":"api-3","message":"Hola desde Flask"}
+
+{"instance":"api-3","message":"Hola desde Flask"}
+
+{"instance":"api-1","message":"Hola desde Flask"}
+
+{"instance":"api-3","message":"Hola desde Flask"}
+
+{"instance":"api-1","message":"Hola desde Flask"}
+
+{"instance":"api-3","message":"Hola desde Flask"}
+
+  curl -s http://localhost:8080/health
+{"instance":"api-1","status":"ok"}
+
+docker compose start api2
+[+] start 1/1
+ ✔ Container taller-load-balancer-api2-1 Started                                            0.2s
+  for i in (seq 1 6); curl -s http://localhost:8080/health; echo ""; end
+{"instance":"api-3","status":"ok"}
+
+{"instance":"api-1","status":"ok"}
+
+{"instance":"api-2","status":"ok"}
+
+{"instance":"api-3","status":"ok"}
+
+{"instance":"api-1","status":"ok"}
+
+{"instance":"api-2","status":"ok"}

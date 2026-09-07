@@ -1,0 +1,93 @@
+docker build -t ubuntu-bash-lab .
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon   5.12kB
+Step 1/5 : FROM ubuntu:latest
+ ---> 2260313b31c8
+Step 2/5 : RUN apt-get update && apt-get install -y     bash     coreutils     grep     gawk     procps     nano     && rm -rf /var/lib/apt/lists/*
+ ---> Using cache
+ ---> ce8421dccf4c
+Step 3/5 : WORKDIR /app
+ ---> Using cache
+ ---> f303d21b352c
+Step 4/5 : COPY . /app
+ ---> 914e1ea54bba
+Step 5/5 : CMD ["bash"]
+ ---> Running in e43f5ec027d7
+ ---> Removed intermediate container e43f5ec027d7
+ ---> c9f629543531
+Successfully built c9f629543531
+Successfully tagged ubuntu-bash-lab:latest
+  docker run -it --name ubuntu-lab ubuntu-bash-lab
+root@eab08c64fe15:/app# pwd
+/app
+root@eab08c64fe15:/app# ls -la
+total 24
+drwxr-xr-x 1 root root 4096 Sep  7 20:48 .
+drwxr-xr-x 1 root root 4096 Sep  7 20:50 ..
+-rw-r--r-- 1 root root  504 Sep  7 20:48 Dockerfile
+-rw-r--r-- 1 root root   66 Sep  7 04:28 Dockerfile.combinado
+-rw-r--r-- 1 root root   38 Sep  7 04:26 Dockerfile.entrypoint
+-rw-r--r-- 1 root root   49 Sep  7 04:25 dockerfile.cmd
+root@eab08c64fe15:/app# exit
+exit
+  docker build -f Dockerfile.cmd -t ejemplo-cmd .
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon   5.12kB
+Step 1/2 : FROM ubuntu:latest
+ ---> 2260313b31c8
+Step 2/2 : CMD ["echo", "Hola desde CMD"]
+ ---> Using cache
+ ---> 1a90522c4d63
+Successfully built 1a90522c4d63
+Successfully tagged ejemplo-cmd:latest
+  docker run --rm ejemplo-cmd
+Hola desde CMD
+  docker run --rm ejemplo-cmd "Mensaje reemplazado"
+docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "Mensaje reemplazado": executable file not found in $PATH
+
+Run 'docker run --help' for more information
+  docker build -f Dockerfile.entrypoint -t ejemplo-entrypoint .
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon   5.12kB
+Step 1/2 : FROM ubuntu:latest
+ ---> 2260313b31c8
+Step 2/2 : ENTRYPOINT ["echo"]
+ ---> Using cache
+ ---> f0d5c4269bd7
+Successfully built f0d5c4269bd7
+Successfully tagged ejemplo-entrypoint:latest
+  docker run --rm ejemplo-entrypoint "Hola"
+Hola
+  docker run --rm ejemplo-entrypoint "Mensaje adicional"
+Mensaje adicional
+  docker build -f Dockerfile.combinado -t ejemplo-combinado .
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon   5.12kB
+Step 1/3 : FROM ubuntu:latest
+ ---> 2260313b31c8
+Step 2/3 : ENTRYPOINT ["echo"]
+ ---> Using cache
+ ---> f0d5c4269bd7
+Step 3/3 : CMD ["Mensaje por defecto"]
+ ---> Using cache
+ ---> 999ab0c62dff
+Successfully built 999ab0c62dff
+Successfully tagged ejemplo-combinado:latest
+  docker run --rm ejemplo-combinado
+Mensaje por defecto
+  docker run --rm ejemplo-combinado "Mensaje personalizado"
+Mensaje personalizado
+󰪢 0s 󰉋 → .../02/02 󰜥 󰘬 main 
+    

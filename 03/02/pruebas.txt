@@ -1,0 +1,214 @@
+docker compose up --build -d
+WARN[0000] buildx Docker CLI plugin not found: falling back to the classic builder. BuildKit-only build features (multi-arch, secrets, ssh, additional contexts, ...) will not be available 
+Sending build context to Docker daemon     455B
+Sending build context to Docker daemon     496B
+Sending build context to Docker daemon     489B
+Sending build context to Docker daemon     489B
+Step 1/8 : FROM python:3.12-slim
+Step 1/8 : FROM python:3.12-slim
+Sending build context to Docker daemon     496B
+Step 1/8 : FROM python:3.12-slim
+Step 1/8 : FROM python:3.12-slim
+Step 1/8 : FROM python:3.12-slim
+ ---> 78387bc3881b
+Step 2/8 : WORKDIR /app
+ ---> 78387bc3881b
+Step 2/8 : WORKDIR /app
+ ---> 78387bc3881b
+Step 2/8 : WORKDIR /app
+ ---> 78387bc3881b
+Step 2/8 : WORKDIR /app
+ ---> 78387bc3881b
+Step 2/8 : WORKDIR /app
+ ---> Using cache
+ ---> ea69b1bbd758
+Step 3/8 : COPY requirements.txt .
+ ---> Using cache
+ ---> ea69b1bbd758
+Step 3/8 : COPY requirements.txt .
+ ---> Using cache
+ ---> ea69b1bbd758
+Step 3/8 : COPY requirements.txt .
+ ---> Using cache
+ ---> f0ea1ede3ad0
+Step 4/8 : RUN pip install --no-cache-dir -r requirements.txt
+ ---> Using cache
+ ---> ea69b1bbd758
+Step 3/8 : COPY requirements.txt .
+ ---> Using cache
+ ---> f0ea1ede3ad0
+Step 4/8 : RUN pip install --no-cache-dir -r requirements.txt
+ ---> Using cache
+ ---> ea69b1bbd758
+Step 3/8 : COPY requirements.txt .
+ ---> Using cache
+ ---> f0ea1ede3ad0
+Step 4/8 : RUN pip install --no-cache-dir -r requirements.txt
+ ---> Using cache
+ ---> f0ea1ede3ad0
+Step 4/8 : RUN pip install --no-cache-dir -r requirements.txt
+ ---> Using cache
+ ---> d9dd19434e73
+Step 5/8 : COPY app.py .
+ ---> Using cache
+ ---> d9dd19434e73
+Step 5/8 : COPY app.py .
+ ---> Using cache
+ ---> f0ea1ede3ad0
+Step 4/8 : RUN pip install --no-cache-dir -r requirements.txt
+ ---> Using cache
+ ---> d9dd19434e73
+Step 5/8 : COPY app.py .
+ ---> Using cache
+ ---> d9dd19434e73
+Step 5/8 : COPY app.py .
+ ---> Using cache
+ ---> d9dd19434e73
+Step 5/8 : COPY app.py .
+ ---> b6eb13dd79d1
+Step 6/8 : EXPOSE 5000
+ ---> dc9934d20ad8
+Step 6/8 : EXPOSE 5000
+ ---> da936ab351f3
+Step 6/8 : EXPOSE 5000
+ ---> 61f9afa69b3b
+Step 6/8 : EXPOSE 5000
+ ---> b46d07664e33
+Step 6/8 : EXPOSE 5000
+ ---> Running in a6feef2a7425
+ ---> Running in 1f22dcbf351b
+ ---> Running in 32e30f76f3b6
+ ---> Running in c6845ff9dcac
+ ---> Running in 5cf61b57bd07
+ ---> Removed intermediate container a6feef2a7425
+ ---> 9690fa5c2a0f
+Step 7/8 : CMD ["python", "app.py"]
+ ---> Removed intermediate container 1f22dcbf351b
+ ---> 61affe3ae256
+Step 7/8 : CMD ["python", "app.py"]
+ ---> Removed intermediate container 32e30f76f3b6
+ ---> 5bee3dcbb8c4
+Step 7/8 : CMD ["python", "app.py"]
+ ---> Removed intermediate container c6845ff9dcac
+ ---> 78dd08496235
+Step 7/8 : CMD ["python", "app.py"]
+ ---> Removed intermediate container 5cf61b57bd07
+ ---> 7ec7634d5d24
+Step 7/8 : CMD ["python", "app.py"]
+ ---> Running in 7cdaa48bc9ab
+ ---> Running in 72273d6e9ced
+ ---> Running in 360bcb098263
+ ---> Running in 7c9ef6401ab0
+ ---> Running in 5faf62e8fa7d
+ ---> Removed intermediate container 7cdaa48bc9ab
+ ---> 993b2abc357e
+Step 8/8 : LABEL com.docker.compose.image.builder=classic
+ ---> Removed intermediate container 72273d6e9ced
+ ---> 238f029f8fc6
+Step 8/8 : LABEL com.docker.compose.image.builder=classic
+ ---> Removed intermediate container 360bcb098263
+ ---> 2787f2582fe0
+Step 8/8 : LABEL com.docker.compose.image.builder=classic
+ ---> Running in 1c5e37951399
+ ---> Removed intermediate container 5faf62e8fa7d
+ ---> a3f279da37bf
+Step 8/8 : LABEL com.docker.compose.image.builder=classic
+ ---> Removed intermediate container 7c9ef6401ab0
+ ---> 3eb961a10471
+Step 8/8 : LABEL com.docker.compose.image.builder=classic
+ ---> Running in 226dec356c69
+ ---> Running in 1b7fd5504805
+ ---> Running in 366fa0e5a6cd
+ ---> Running in 5dbc2b3d0644
+ ---> Removed intermediate container 1c5e37951399
+ ---> 459a339e80a2
+Successfully built 459a339e80a2
+ ---> Removed intermediate container 226dec356c69
+ ---> 4db28e06518c
+Successfully tagged taller-reverse-proxy-users2:latest
+ ---> Removed intermediate container 1b7fd5504805
+ ---> 1e1eb8940577
+Successfully built 4db28e06518c
+Successfully tagged taller-reverse-proxy-users1:latest
+Successfully built 1e1eb8940577
+ ---> Removed intermediate container 366fa0e5a6cd
+ ---> 93649f4fa2fc
+ ---> Removed intermediate container 5dbc2b3d0644
+ ---> ffc7a0d14ccc
+Successfully tagged taller-reverse-proxy-products:latest
+Successfully built ffc7a0d14ccc
+Successfully built 93649f4fa2fc
+Successfully tagged taller-reverse-proxy-orders2:latest
+Successfully tagged taller-reverse-proxy-orders1:latest
+[+] up 12/12
+ ✔ Image taller-reverse-proxy-products       Built                                          4.8s
+ ✔ Image taller-reverse-proxy-orders2        Built                                          4.8s
+ ✔ Image taller-reverse-proxy-users2         Built                                          4.7s
+ ✔ Image taller-reverse-proxy-orders1        Built                                          4.8s
+ ✔ Image taller-reverse-proxy-users1         Built                                          4.7s
+ ✔ Network taller-reverse-proxy_default      Created                                        0.0s
+ ✔ Container taller-reverse-proxy-orders2-1  Started                                        0.9s
+ ✔ Container taller-reverse-proxy-users2-1   Started                                        1.0s
+ ✔ Container taller-reverse-proxy-products-1 Started                                        0.4s
+ ✔ Container taller-reverse-proxy-orders1-1  Started                                        0.7s
+ ✔ Container taller-reverse-proxy-users1-1   Started                                        0.6s
+ ✔ Container taller-reverse-proxy-nginx-1    Started                                        1.1s
+  docker compose ps
+NAME                              IMAGE                           COMMAND                  SERVICE    CREATED         STATUS         PORTS
+taller-reverse-proxy-nginx-1      nginx:alpine                    "/docker-entrypoint.…"   nginx      8 seconds ago   Up 7 seconds   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+taller-reverse-proxy-orders1-1    taller-reverse-proxy-orders1    "python app.py"          orders1    8 seconds ago   Up 7 seconds   5000/tcp
+taller-reverse-proxy-orders2-1    taller-reverse-proxy-orders2    "python app.py"          orders2    8 seconds ago   Up 7 seconds   5000/tcp
+taller-reverse-proxy-products-1   taller-reverse-proxy-products   "python app.py"          products   8 seconds ago   Up 8 seconds   5000/tcp
+taller-reverse-proxy-users1-1     taller-reverse-proxy-users1     "python app.py"          users1     8 seconds ago   Up 8 seconds   5000/tcp
+taller-reverse-proxy-users2-1     taller-reverse-proxy-users2     "python app.py"          users2     8 seconds ago   Up 7 seconds   5000/tcp
+  curl -s http://localhost:8080/api/users/; echo ""
+{"instance":"users-1","message":"Servicio de usuarios","service":"users"}
+
+  curl -s http://localhost:8080/api/products/; echo ""
+{"message":"Servicio de productos","service":"products"}
+
+  curl -s http://localhost:8080/api/orders/; echo ""
+{"instance":"orders-1","message":"Servicio de ordenes","service":"orders"}
+
+  for i in (seq 1 4); curl -s http://localhost:8080/api/users/; echo ""; end
+{"instance":"users-1","message":"Servicio de usuarios","service":"users"}
+
+{"instance":"users-1","message":"Servicio de usuarios","service":"users"}
+
+{"instance":"users-1","message":"Servicio de usuarios","service":"users"}
+
+{"instance":"users-1","message":"Servicio de usuarios","service":"users"}
+
+  for i in (seq 1 3); curl -s http://localhost:8080/api/products/; echo ""; end
+{"message":"Servicio de productos","service":"products"}
+
+{"message":"Servicio de productos","service":"products"}
+
+{"message":"Servicio de productos","service":"products"}
+
+  for i in (seq 1 4); curl -s http://localhost:8080/api/users/; echo ""; end
+{"instance":"users-2","message":"Servicio de usuarios","service":"users"}
+
+{"instance":"users-1","message":"Servicio de usuarios","service":"users"}
+
+{"instance":"users-2","message":"Servicio de usuarios","service":"users"}
+
+{"instance":"users-1","message":"Servicio de usuarios","service":"users"}
+
+  for i in (seq 1 4); curl -s http://localhost:8080/api/users/; echo ""; end
+{"instance":"users-2","message":"Servicio de usuarios","service":"users"}
+
+{"instance":"users-1","message":"Servicio de usuarios","service":"users"}
+
+{"instance":"users-2","message":"Servicio de usuarios","service":"users"}
+
+{"instance":"users-1","message":"Servicio de usuarios","service":"users"}
+
+  for i in (seq 1 4); curl -s http://localhost:8080/api/orders/; echo ""; end
+{"instance":"orders-1","message":"Servicio de ordenes","service":"orders"}
+
+{"instance":"orders-2","message":"Servicio de ordenes","service":"orders"}
+
+{"instance":"orders-1","message":"Servicio de ordenes","service":"orders"}
+
+{"instance":"orders-2","message":"Servicio de ordenes","service":"orders"}

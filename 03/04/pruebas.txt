@@ -1,0 +1,134 @@
+MANUAL
+
+
+docker compose up -d
+[+] up 18/18
+ ✔ Image postgres:16                     Pulled                                                                                                                                                    26.3s
+ ✔ Network taller4-postgres_default      Created                                                                                                                                                    0.0s
+ ✔ Container taller4-postgres-postgres-1 Started                                                                                                                                                    0.7s
+  docker compose exec postgres psql -U admin -d universidad
+psql (16.15 (Debian 16.15-1.pgdg13+2))
+Type "help" for help.
+
+universidad=# CREATE SCHEMA academia;
+CREATE SCHEMA
+universidad=# CREATE TABLE academia.students (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(120) UNIQUE NOT NULL
+);
+CREATE TABLE
+universidad=# CREATE TABLE academia.courses (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    credits INTEGER NOT NULL
+);
+CREATE TABLE
+universidad=# INSERT INTO academia.students (name, email) VALUES
+('Ana Gomez', 'ana@example.com'),
+('Carlos Ruiz', 'carlos@example.com');
+INSERT 0 2
+universidad=# INSERT INTO academia.courses (name, credits) VALUES
+('Cloud Computing', 3),
+('Internet of Things', 4);
+INSERT 0 2
+universidad=# SELECT * FROM academia.students;
+ id |    name     |       email        
+----+-------------+--------------------
+  1 | Ana Gomez   | ana@example.com
+  2 | Carlos Ruiz | carlos@example.com
+(2 rows)
+
+universidad=# SELECT * FROM academia.courses;
+ id |        name        | credits 
+----+--------------------+---------
+  1 | Cloud Computing    |       3
+  2 | Internet of Things |       4
+(2 rows)
+
+universidad=# \q
+⏎         
+
+
+AUTOMATICA
+
+
+docker compose down -v
+[+] down 2/2
+ ✔ Container taller4-postgres-postgres-1 Removed                                                                                                                                                    0.2s
+ ✔ Network taller4-postgres_default      Removed                                                                                                                                                    0.1s
+  docker compose up -d
+[+] up 3/3
+ ✔ Volume taller4-postgres_postgres_data Created                                                                                                                                                    0.0s
+ ✔ Network taller4-postgres_default      Created                                                                                                                                                    0.1s
+ ✔ Container postgres_db                 Started                                                                                                                                                    0.3s
+  docker compose exec postgres psql -U admin -d universidad -c "\\dn"
+       List of schemas
+   Name   |       Owner       
+----------+-------------------
+ academia | admin
+ public   | pg_database_owner
+(2 rows)
+
+  docker compose exec postgres psql -U admin -d universidad -c "\\dt academia.*"
+           List of relations
+  Schema  |    Name     | Type  | Owner 
+----------+-------------+-------+-------
+ academia | courses     | table | admin
+ academia | enrollments | table | admin
+ academia | students    | table | admin
+ academia | teachers    | table | admin
+(4 rows)
+
+  docker compose exec postgres psql -U admin -d universidad -c "\\d academia.enrollments"
+                                            Table "academia.enrollments"
+   Column    |            Type             | Collation | Nullable |                     Default                      
+-------------+-----------------------------+-----------+----------+--------------------------------------------------
+ id          | integer                     |           | not null | nextval('academia.enrollments_id_seq'::regclass)
+ student_id  | integer                     |           | not null | 
+ course_id   | integer                     |           | not null | 
+ enrolled_at | timestamp without time zone |           |          | CURRENT_TIMESTAMP
+ grade       | numeric(3,2)                |           |          | 
+Indexes:
+    "enrollments_pkey" PRIMARY KEY, btree (id)
+    "uq_student_course" UNIQUE CONSTRAINT, btree (student_id, course_id)
+Check constraints:
+    "enrollments_grade_check" CHECK (grade >= 0.0 AND grade <= 5.0)
+Foreign-key constraints:
+    "fk_enrollment_course" FOREIGN KEY (course_id) REFERENCES academia.courses(id) ON UPDATE CASCADE ON DELETE CASCADE
+    "fk_enrollment_student" FOREIGN KEY (student_id) REFERENCES academia.students(id) ON UPDATE CASCADE ON DELETE CASCADE
+
+  docker compose exec postgres psql -U admin -d universidad -c "
+   SELECT 
+        s.name AS estudiante,
+        c.name AS curso,
+        t.name AS profesor,
+        e.grade AS calificacion
+    FROM academia.enrollments e
+    JOIN academia.students s ON e.student_id = s.id
+    JOIN academia.courses c ON e.course_id = c.id
+    JOIN academia.teachers t ON c.teacher_id = t.id
+    ORDER BY s.name ASC;
+    "
+    estudiante    |          curso           |       profesor       | calificacion 
+------------------+--------------------------+----------------------+--------------
+ Ana Maria Diaz   | Cloud Computing e IoT    | Dr. Roberto Martinez |         4.20
+ Laura Sofia Rios | Arquitectura de Software | Dr. Roberto Martinez |         4.60
+ Mateo Fernandez  | Bases de Datos Avanzadas | Dra. Elena Vasquez   |         3.90
+ Phanor Castillo  | Cloud Computing e IoT    | Dr. Roberto Martinez |         4.80
+ Phanor Castillo  | Arquitectura de Software | Dr. Roberto Martinez |         4.50
+(5 rows)
+
+docker compose down
+[+] down 2/2
+ ✔ Container postgres_db            Removed                                                                                                                                                         0.3s
+ ✔ Network taller4-postgres_default Removed                                                                                                                                                         0.1s
+  docker compose up -d
+[+] up 2/2
+ ✔ Network taller4-postgres_default Created                                                                                                                                                         0.1s
+ ✔ Container postgres_db            Started                                                                                                                                                         0.3s
+  docker compose exec postgres psql -U admin -d universidad -c "SELECT count(*) FROM academia.enrollments;"
+ count 
+-------
+     5
+(1 row)

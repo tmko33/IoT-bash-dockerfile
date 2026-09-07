@@ -1,0 +1,93 @@
+grep 'ERROR' access.log
+2026-08-24 08:16:02 ERROR user=juan action=login ip=192.168.1.15
+2026-08-24 08:18:04 ERROR user=juan action=upload ip=192.168.1.15
+2026-08-24 08:20:11 ERROR user=juan action=login ip=192.168.1.15
+  grep 'ERROR' access.log | wc -l
+3
+  grep 'ERROR' access.log | awk '{for(i=1;i<=NF;i++) if($i ~ /^user=/) print $i}'
+user=juan
+user=juan
+user=juan
+  grep 'ERROR' access.log | awk '{for(i=1;i<=NF;i++) if($i ~ /^user=/) print $i}' | sort | uniq -c
+      3 user=juan
+  grep 'ERROR' access.log | awk '{for(i=1;i<=NF;i++) if($i ~ /^ip=/) print $i}' | sort | uniq -c | sort -nr | head -n 1
+      3 ip=192.168.1.15
+  {
+        echo "===== REPORTE DE INCIDENTES (access.log) ====="
+        echo "1. Cantidad total de registros : $(wc -l < access.log)"
+        echo "2. Cantidad de errores         : $(grep -c 'ERROR' access.log)"
+        echo "3. Cantidad de advertencias    : $(grep -c 'WARN' access.log)"
+        echo "4. Usuario con más errores     : $(grep 'ERROR' access.log | awk '{for(i=1;i<=NF;i++) if($i ~ /^user=/) print $i}' | sort | uniq -c | sort -nr | head -n 1 | awk '{print $2, "(" $1 " fallos)"}')"
+        echo "5. IP con más errores          : $(grep 'ERROR' access.log | awk '{for(i=1;i<=NF;i++) if($i ~ /^ip=/) print $i}' | sort | uniq -c | sort -nr | head -n 1 | awk '{print $2, "(" $1 " fallos)"}')"
+        echo "=============================================="
+    } > reporte.txt
+  ls
+ access.log   analiza.sh   monitor.sh   reporte.txt   saludo.sh   syslog.log
+  grep 'ERROR' access.log | awk '{for(i=1;i<=NF;i++) if($i ~ /^user=/) print $i}' | sort | uniq -c | awk '$1 >= 2 {print "ALERTA DE SEGURIDAD: El " $2 " presenta " $1 " eventos ERROR (posible ataque de fuerza bruta o falla recurrente)."}'
+ALERTA DE SEGURIDAD: El user=juan presenta 3 eventos ERROR (posible ataque de fuerza bruta o falla recurrente).
+  ./saludo.sh 
+Hola desde mi primer script Bash
+Usuario: pan
+Directorio actual: /home/pan/Documents/9no/iot/workshopsGit/02/01
+  ./monitor.sh 
+==================== MONITOR DEL SISTEMA ====================
+./monitor.sh: line 6: hostname: command not found
+Hostname            : 
+Usuario actual      : pan
+Fecha y hora        : 2026-09-07 15:44:16
+Directorio actual   : /home/pan/Documents/9no/iot/workshopsGit/02/01
+Procesos activos    : 322
+------------------------------------------------------------
+ESTADO DEL ALMACENAMIENTO (df -h):
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p5   69G   56G  9.2G  86% /
+devtmpfs        7.5G     0  7.5G   0% /dev
+tmpfs           7.6G  180M  7.4G   3% /dev/shm
+efivarfs        128K   43K   81K  35% /sys/firmware/efi/efivars
+tmpfs           3.1G  1.9M  3.1G   1% /run
+tmpfs           7.6G   65M  7.5G   1% /tmp
+none            1.0M     0  1.0M   0% /run/credentials/systemd-journald.service
+/dev/nvme0n1p1   96M   85M   12M  89% /boot/efi
+tmpfs           1.6G  8.2M  1.5G   1% /run/user/1000
+------------------------------------------------------------
+VERIFICACIÓN DE CAPACIDAD (Umbral: 80%):
+[ADVERTENCIA CRÍTICA] La partición '/' ha alcanzado el 86% de uso.
+[ADVERTENCIA CRÍTICA] La partición '/boot/efi' ha alcanzado el 89% de uso.
+============================================================
+Diagnóstico finalizado con éxito.
+  ./analiza.sh 
+Error: No se especificaron archivos para analizar.
+Uso correcto: ./analiza.sh <archivo1.log> [archivo2.log ...]
+  ./analiza.sh no_existe.log
+==========================================================
+          INICIANDO PROCESAMIENTO DE REGISTROS            
+==========================================================
+
+--- Analizando: no_existe.log ---
+Error: El archivo 'no_existe.log' no existe o no es un archivo regular.
+
+==========================================================
+Resumen final: 0 de 1 archivos analizados correctamente.
+==========================================================
+  ./analiza.sh access.log syslog.log
+==========================================================
+          INICIANDO PROCESAMIENTO DE REGISTROS            
+==========================================================
+
+--- Analizando: access.log ---
+Total de líneas      : 10
+Total de palabras    : 47
+Total de caracteres  : 491
+Eventos ERROR        : 3
+Eventos WARN         : 1
+
+--- Analizando: syslog.log ---
+Total de líneas      : 10
+Total de palabras    : 47
+Total de caracteres  : 491
+Eventos ERROR        : 3
+Eventos WARN         : 1
+
+==========================================================
+Resumen final: 2 de 2 archivos analizados correctamente.
+==========================================================

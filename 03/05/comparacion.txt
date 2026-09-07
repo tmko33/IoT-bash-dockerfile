@@ -1,0 +1,83 @@
+Respuestas de Análisis
+
+¿Qué diferencia existe entre tabla y colección?
+
+Una tabla en PostgreSQL impone un esquema rígido;
+cada fila debe ajustarse exactamente a los tipos
+de datos y columnas predefinidas en el catálogo.
+Una colección en MongoDB es un contenedor de
+documentos BSON sin imposición estricta de esquema
+a nivel de motor: dos documentos dentro de la
+misma colección pueden tener claves distintas
+o tipos de datos variables.
+
+¿Qué diferencia existe entre fila y documento?
+
+Una fila es una tupla de valores planos escalares
+que representan una única entrada estructurada
+en una tabla relacional. Un documento es una
+estructura autorreferencial y jerárquica (formato
+BSON) que puede contener pares clave-valor,
+arreglos, objetos anidados y metadatos complejos
+dentro de sí mismo.
+
+¿Qué ventaja ofrecen los documentos anidados?
+
+Optimización de lecturas y concurrencia. Al
+agrupar datos estrechamente relacionados dentro
+del mismo documento (como las líneas de detalle
+de una orden), se eliminan las operaciones
+costosas de JOIN en disco o memoria. La
+aplicación recupera toda la información
+contextual con un único acceso por clave
+primaria (_id), mejorando la tasa de
+transferencia en entornos de alta concurrencia.
+
+¿Qué riesgos tiene duplicar datos en documentos?
+
+El riesgo principal es la inconsistencia de
+datos. Si se desnormaliza duplicando información
+(por ejemplo, incrustar el nombre y precio del
+producto dentro de la orden) y luego el producto
+cambia de precio o nombre, las órdenes previas
+o concurrentes quedan desalineadas a menos que
+se ejecuten actualizaciones masivas
+distribuidas (fan-out updates), aumentando la
+complejidad lógica y el consumo de I/O.
+
+¿Qué tipos de aplicaciones podrían beneficiarse
+de MongoDB?
+
+- Sistemas de ingesta de telemetría e Internet
+  de las Cosas (IoT) con cargas masivas de
+  escritura de series de tiempo.
+
+- Catálogos de comercio electrónico con
+  atributos variables por producto (ropa con
+  talla/color, hardware con specs técnicas).
+
+- Plataformas de gestión de contenido (CMS),
+  feeds de redes sociales y almacenamiento de
+  logs estructurados.
+
+- Aplicaciones móviles con sincronización de
+  estado fuera de línea y evolución rápida de
+  modelos de datos.
+
+¿Qué modelo resulta más adecuado para el
+ejercicio universitario (Taller 4) y por qué?
+
+El modelo relacional (PostgreSQL). El dominio
+universitario (estudiantes, profesores, cursos,
+matrículas y calificaciones) tiene una naturaleza
+altamente estructurada donde la integridad
+referencial, la unicidad compuesta y la
+prevención de inconsistencias son requisitos
+obligatorios (un estudiante no puede matricularse
+dos veces en el mismo curso, una matrícula debe
+pertenecer a un curso válido y las calificaciones
+deben respetar rangos numéricos estrictos).
+Modelar este sistema en NoSQL requeriría emular
+llaves foráneas y reglas de integridad de forma
+manual dentro del código de la aplicación,
+incrementando el riesgo de corrupción de datos.   

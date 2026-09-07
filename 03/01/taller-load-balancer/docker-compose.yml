@@ -3,16 +3,22 @@ services:
     build: ./api
     environment:
       INSTANCE: api-1
+    networks:
+      - balance_net
 
   api2:
     build: ./api
     environment:
       INSTANCE: api-2
+    networks:
+      - balance_net
 
   api3:
     build: ./api
     environment:
       INSTANCE: api-3
+    networks:
+      - balance_net
 
   nginx:
     image: nginx:alpine
@@ -24,3 +30,9 @@ services:
       - api1
       - api2
       - api3
+    networks:
+      - balance_net
+
+networks:
+  balance_net:
+    driver: bridge
