@@ -1,0 +1,65 @@
+05/01 — Sistema de seguimiento de equipos
+Fecha:
+Region: us-east-1
+Cuenta: Learner Lab
+
+== Fase A — Prueba local ==
+
+$ docker compose up -d --build
+
+$ docker compose ps
+
+$ curl.exe http://localhost:8080/health
+
+$ curl.exe http://localhost:8080/empleados
+
+$ curl.exe http://localhost:8080/equipos
+
+$ curl.exe -X POST http://localhost:8080/empleados ...
+
+$ curl.exe -X POST http://localhost:8080/equipos ...
+
+$ curl.exe -X POST http://localhost:8080/equipos/2/asignar ...
+
+$ curl.exe -X POST http://localhost:8080/equipos/1/mantenimientos ...
+
+$ curl.exe http://localhost:8080/equipos/1/historial
+
+$ docker exec -it equipment-db psql -U equipment -d equipment -c "\dt"
+
+$ docker exec -it equipment-db psql -U equipment -d equipment -c "SELECT * FROM employees;"
+
+== Fase B — ECR ==
+
+$ aws sts get-caller-identity
+
+$ aws ecr create-repository ...
+
+$ aws ecr get-login-password ... | docker login ...
+
+$ docker buildx build ...
+
+$ docker tag ...
+
+$ docker push ...
+
+$ aws ecr describe-images ...
+
+== Fase C — S3 ==
+
+Bucket:
+Objeto de prueba:
+Resultado:
+
+== Fase D — EC2 ==
+
+Instance ID:
+Public IP:
+Private IP:
+Security Group:
+IAM Role:
+docker compose ps:
+curl http://localhost/health:
+Prueba desde Internet:
+PostgreSQL:
+S3:

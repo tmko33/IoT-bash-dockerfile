@@ -1,0 +1,88 @@
+05/01 — Sistema de seguimiento de equipos
+Preguntas de defensa y explicación arquitectónica
+
+== 1. ¿Por qué utilizar ECR? ==
+
+Porque es un registro privado de imágenes integrado con IAM, ECR escanea las
+imágenes al hacer push, evita depender de Docker Hub y mantiene la imagen en
+la misma región que EC2. Además permite el flujo build once, deploy the same
+image: se construye una vez y se despliega la misma imagen en cualquier
+instancia.
+
+== 2. ¿Por qué no construir la imagen directamente en EC2? ==
+
+Porque EC2 no debería necesitar el código fuente ni las herramientas de build.
+Construir allí hace que el servidor sea más pesado, más lento de escalar y
+menos reproducible. ECR permite que la imagen se construya en un entorno
+controlado (local o CI/CD) y que EC2 solo haga docker pull.
+
+== 3. ¿Qué diferencia existe entre ECR y S3? ==
+
+ECR almacena imágenes de contenedores (capas, manifiestos y tags). S3 almacena
+objetos arbitrarios: fotos, PDFs, actas, facturas. ECR se usa para desplegar
+la aplicación; S3 para los documentos que produce o consume la aplicación.
+
+== 4. ¿Por qué PostgreSQL y S3 tienen responsabilidades diferentes? ==
+
+PostgreSQL maneja datos estructurados y transaccionales: empleados, equipos,
+asignaciones, mantenimientos y metadatos. S3 maneja objetos grandes o no
+estructurados: imágenes, PDFs y evidencias. Separarlos permite escalar,
+respaldar y proteger cada tipo de dato con la herramienta adecuada.
+
+== 5. ¿Qué información debería estar en PostgreSQL? ==
+
+Empleados, equipos, estados, asignaciones, mantenimientos, documentos
+(metadatos: nombre, s3_key, fecha) y cualquier relación entre ellos.
+
+== 6. ¿Qué información debería estar en S3? ==
+
+Fotografías de equipos, PDFs de actas de entrega, facturas, evidencias de
+mantenimiento y cualquier archivo binario. En PostgreSQL solo se guarda la
+clave S3 y el nombre del archivo.
+
+== 7. ¿Por qué Flask utiliza db como hostname? ==
+
+Porque dentro de Docker Compose, `db` es el nombre del servicio PostgreSQL y
+Docker DNS lo resuelve al contenedor correspondiente. `localhost` dentro del
+contenedor de Flask sería el propio contenedor, no la base de datos.
+
+== 8. ¿Qué pasaría si eliminamos la EC2? ==
+
+Se pierden los contenedores y el volumen local de PostgreSQL si no hay un
+almacenamiento externo. La imagen sigue en ECR y los documentos siguen en S3,
+pero los datos de PostgreSQL se perderían si solo estaban en el volumen de esa
+instancia. En producción la base debería estar en RDS o tener backups.
+
+== 9. ¿Qué componente deberíamos cambiar para soportar varias instancias de Flask? ==
+
+Externalizar el estado: sesiones en Redis/ElastiCache, archivos en S3,
+metadatos en PostgreSQL/RDS. Poner un ALB delante de las instancias, hacer la
+aplicación stateless, usar health checks y escalar con un Auto Scaling Group o
+varias réplicas de Compose. El contenedor de Flask no debe guardar estado
+local.
+
+== 10. ¿Cómo evolucionaría esta arquitectura hacia alta disponibilidad? ==
+
+Con ALB en varias AZs, Auto Scaling Group de EC2, RDS PostgreSQL Multi-AZ,
+S3 para documentos, ElastiCache para sesiones, CloudWatch para métricas y
+alarmas, backups, WAF/Shield, IaC (Terraform/CloudFormation) y CI/CD para
+construir y publicar imágenes de forma reproducible.
+
+== Explicación arquitectónica: de docker push a la respuesta de Flask ==
+
+1. El desarrollador construye la imagen `equipment-api:1.0` y la publica en
+   ECR con `docker push`.
+2. La EC2, usando su IAM Role (LabRole), se autentica contra ECR y hace
+   `docker pull` de la imagen.
+3. Docker Compose levanta tres servicios: `db` (PostgreSQL), `api` (Flask +
+   gunicorn) y `nginx` (reverse proxy).
+4. El usuario entra por `http://<IP_PUBLICA>`; el Security Group permite TCP
+   80 y Nginx recibe la petición.
+5. Nginx hace `proxy_pass` a `http://api:5000` usando la red interna de
+   Compose; el puerto 5000 no está publicado al host.
+6. Flask ejecuta la lógica, consulta PostgreSQL por el hostname `db` y, si hay
+   documentos, sube/lee objetos de S3 usando el IAM Role de la instancia.
+7. La respuesta viaja de vuelta: Flask -> Nginx -> EC2 -> Internet -> usuario.
+8. La imagen se puede actualizar publicando una nueva versión en ECR y
+   recreando el contenedor con `docker compose up -d --pull always`, sin
+   reconstruir nada dentro de EC2.
