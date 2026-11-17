@@ -1,0 +1,89 @@
+Workshop 4 — Seguridad de red en EC2
+Fecha: 2026-11-17
+Region: us-east-1
+Instancia: curso-ec2-phanor (i-0f2fd7baf1f67db952)
+Public IP: 54.152.85.71
+Private IP: 172.31.34.74
+Security Group: curso-ec2-sg (sg-048da8f1f89daf923)
+
+== 1. Auditoría de puertos ==
+
+$ sudo ss -tulpn
+Netid   State    Recv-Q   Send-Q         Local Address:Port       Peer Address:Port   Process
+udp     UNCONN   0        0                  127.0.0.1:323             0.0.0.0:*       users:(("chronyd",pid=782,fd=5))
+udp     UNCONN   0        0                 127.0.0.54:53              0.0.0.0:*       users:(("systemd-resolve",pid=329,fd=16))
+udp     UNCONN   0        0              127.0.0.53%lo:53              0.0.0.0:*       users:(("systemd-resolve",pid=329,fd=14))
+udp     UNCONN   0        0          172.31.34.74%ens5:68              0.0.0.0:*       users:(("systemd-network",pid=524,fd=11))
+udp     UNCONN   0        0                      [::1]:323                [::]:*       users:(("chronyd",pid=782,fd=6))
+tcp     LISTEN   0        4096              127.0.0.54:53              0.0.0.0:*       users:(("systemd-resolve",pid=329,fd=17))
+tcp     LISTEN   0        4096                 0.0.0.0:80              0.0.0.0:*       users:(("docker-proxy",pid=4079,fd=8))
+tcp     LISTEN   0        4096                 0.0.0.0:22              0.0.0.0:*       users:(("sshd",pid=1153,fd=3),("systemd",pid=1,fd=130))
+tcp     LISTEN   0        4096           127.0.0.53%lo:53              0.0.0.0:*       users:(("systemd-resolve",pid=329,fd=15))
+tcp     LISTEN   0        4096                    [::]:80                 [::]:*       users:(("docker-proxy",pid=4085,fd=8))
+tcp     LISTEN   0        4096                    [::]:22                 [::]:*       users:(("sshd",pid=1153,fd=4),("systemd",pid=1,fd=131))
+
+Interpretación:
+
+- 22/TCP: sshd (PID 1153). Administración remota.
+- 80/TCP: docker-proxy (PID 4079 IPv4, 4085 IPv6). Publica el puerto de Nginx.
+- 5000/TCP: no aparece en el host. Flask solo existe en la red interna de
+  Docker porque el compose final usa expose, no ports.
+- 5432/TCP: no aparece. PostgreSQL no está desplegado en esta instancia.
+- 53/UDP y 53/TCP: systemd-resolved, DNS local. No es un servicio público.
+- 323/UDP: chronyd, sincronización de hora local.
+- 68/UDP: systemd-networkd, cliente DHCP de la interfaz ens5.
+
+== 2. Security Group antes de la limpieza ==
+
+Reglas de entrada (3):
+
+| Tipo | Protocolo | Puerto | Origen |
+|---|---|---:|---|
+| SSH | TCP | 22 | 191.95.162.60/32 |
+| HTTP | TCP | 80 | 191.95.162.60/32 |
+| TCP personalizado | TCP | 5000 | 191.95.162.60/32 |
+
+La regla del 5000 era un remanente de la prueba directa de Flask. El compose
+final no publica ese puerto en el host, así que la regla no era necesaria.
+
+== 3. Security Group después de la limpieza ==
+
+Se eliminó la regla de TCP 5000. Reglas de entrada (2):
+
+| Tipo | Protocolo | Puerto | Origen |
+|---|---|---:|---|
+| SSH | TCP | 22 | 191.95.162.60/32 |
+| HTTP | TCP | 80 | 191.95.162.60/32 |
+
+== 4. Prueba desde Internet ==
+
+$ curl.exe http://54.152.85.71/health
+{"status":"ok"}
+
+$ curl.exe http://54.152.85.71:5000/health
+curl: (28) Failed to connect to 54.152.85.71 port 5000 after 21039 ms: Could not connect to server
+
+Conclusión de la prueba:
+
+- El puerto 80 sigue funcionando a través de Nginx.
+- El puerto 5000 ya no es accesible desde Internet: no está publicado en el
+  host y además se eliminó la regla del Security Group.
+- El único punto de entrada público es Nginx en el puerto 80.
+- PostgreSQL (5432) nunca se expuso.
+
+== 5. Propuesta de mínimo privilegio ==
+
+| Regla | Puerto | Protocolo | Origen | Justificación |
+|---|---:|---|---|---|
+| SSH administrativo | 22 | TCP | IP administrativa/32 | Acceso remoto controlado |
+| HTTP | 80 | TCP | 0.0.0.0/0 (o My IP en el laboratorio) | Entrada web pública |
+| HTTPS | 443 | TCP | 0.0.0.0/0 | TLS en producción (futuro) |
+| Flask | 5000 | — | Sin regla | Solo red Docker interna |
+| PostgreSQL | 5432 | — | Sin regla | Solo red Docker/privada |
+
+El resultado esperado es:
+
+    Internet -> 80/443 -> Nginx -> Flask:5000 (interno)
+    Administración -> 22 -> IP autorizada
+    Internet -X-> 5000
+    Internet -X-> 5432

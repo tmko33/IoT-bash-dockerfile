@@ -1,0 +1,98 @@
+Workshop 2 — Administración de Linux en EC2
+Curso: Computación en la Nube e Internet de las Cosas
+Fecha: 2026-11-17
+Instancia: curso-ec2-phanor (i-0f2fd7baf1f67db952)
+Hostname: ip-172-31-34-74
+Usuario: ubuntu
+
+== Resumen de los recursos observados ==
+
+La instancia es una t3.micro con 2 vCPU y 909 MiB de memoria RAM. El disco
+raíz es de 15 GB, con 2.0 GB usados (14 %) y 13 GB disponibles. La partición
+/boot es independiente: 881 MB, con 114 MB usados (14 %) y 706 MB libres.
+La carga promedio se mantuvo entre 0.00 y 0.08, había 113 procesos y no hay
+swap configurado. La interfaz ens5 tiene la IP privada 172.31.34.74/20.
+
+| Recurso | Valor observado | Observación |
+|---|---|---|
+| vCPU | 2 | Confirmado con nproc |
+| Memoria RAM | 909 MiB totales; ~303 MiB usados; ~605 MiB disponibles | Sin swap |
+| Disco raíz | 15 GB; 2.0 GB usados; 13 GB libres (14 %) | Filesystem ext4 |
+| /boot | 881 MB; 114 MB usados; 706 MB libres (14 %) | Partición separada |
+| Carga promedio | 0.00 – 0.08 | Sistema prácticamente idle |
+| Procesos | 113 | Medido con ps aux --no-headers \| wc -l |
+| Red | ens5, 172.31.34.74/20 | IP privada de la VPC |
+| Uptime | ~50 minutos | Instancia recién iniciada |
+
+El uso de recursos es bajo y suficiente para el laboratorio. Sin embargo, al
+no tener swap, si se ejecutan muchos contenedores o una base de datos pesada
+habría que monitorear la memoria; 909 MiB es un límite ajustado para Docker +
+PostgreSQL + Nginx en producción.
+
+== Explicación de tres procesos encontrados ==
+
+| Proceso | PID | Usuario | %MEM | Función |
+|---|---:|---|---:|---|
+| systemd | 1 | root | 1.4 | Es el proceso de inicio (init). Arranca y administra los servicios y targets del sistema. |
+| sshd | 1153 (listener), 1154 (priv), 1264 (sesión) | root / ubuntu | 0.7 – 1.1 | Es el servidor SSH. El proceso 1153 escucha en el puerto 22; 1154 aplica separación de privilegios y 1264 atiende la sesión ubuntu@pts/0. |
+| amazon-ssm-agent | 1029 | root | 2.2 | Es el agente de AWS Systems Manager. Permite gestionar la instancia de forma remota (por ejemplo, Session Manager) sin depender de abrir el puerto 22. Usa alrededor de 20 MB de memoria residente. |
+
+También se observa snapd (PID 667), el gestor de paquetes snap, que en esta
+muestra es el proceso con mayor memoria residente (~43 MB). No es necesario
+explicarlo, pero ayuda a entender que la instancia trae agentes y servicios
+de AWS/Ubuntu además del sistema base.
+
+== Análisis de logs ==
+
+journalctl -n 30 mostró la inicialización de la sesión de usuario, tareas de
+cron cada cinco minutos (debian-sa1, parte de sysstat), la ejecución de
+sysstat-collect.service y el registro del propio sudo. Eso indica que el
+sistema está sano y que los servicios programados se están ejecutando.
+
+systemctl status ssh mostró el servicio activo (running), con Main PID 1153.
+El servicio aparece como "disabled" pero es activado por ssh.socket
+(TriggeredBy: ssh.socket), lo cual es normal en Ubuntu 24.04. También tiene
+un drop-in de EC2 Instance Connect y el log confirma el acceso con clave
+pública:
+
+    Accepted publickey for ubuntu from 191.95.162.60 port 9392 ssh2:
+    RSA SHA256:...
+
+Eso confirma que el acceso fue por SSH con key pair, no por contraseña.
+
+== Observaciones técnicas ==
+
+1. El comando pgrep -a systemd-journald falla porque pgrep busca nombres de
+   proceso de máximo 15 caracteres y "systemd-journald" tiene 16. No es un
+   error del sistema; la forma correcta es:
+
+       pgrep -af systemd-journald
+
+   o:
+
+       ps -C systemd-journald -o pid,user,comm,args
+
+2. df muestra /dev/root y findmnt muestra /dev/nvme0n1p1 para el mismo
+   filesystem raíz. /dev/root es un alias; el dispositivo real es
+   /dev/nvme0n1p1. Ambos apuntan al mismo ext4 montado en /.
+
+3. /boot está en otra partición (/dev/nvme0n1p16, 881 MB). Por eso el script
+   con argumento reporta un filesystem distinto al ejecutarlo con /boot.
+
+4. El script system_info.sh automatiza la recolección de hostname, usuario,
+   fecha, uptime, disco, memoria y procesos. Con el argumento opcional puede
+   inspeccionar el filesystem de cualquier ruta:
+
+       ./scripts/system_info.sh /var/log
+       ./scripts/system_info.sh /boot
+
+== Conclusión ==
+
+EC2 entrega la infraestructura (cómputo, red, almacenamiento), pero la
+administración del sistema operativo sigue siendo responsabilidad del
+usuario: revisar procesos, leer logs, gestionar permisos, crear scripts y
+monitorear recursos. En este taller se comprobó que la instancia tiene
+recursos suficientes para el laboratorio, que SSH funciona con clave pública
+y que systemd/journald permiten observar el estado del servidor. El script
+system_info.sh deja una base reutilizable para automatizar la recolección de
+métricas antes de pasar a Docker en el siguiente taller.

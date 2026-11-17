@@ -1,0 +1,240 @@
+Workshop 6 — EC2 en una arquitectura escalable
+Curso: Computación en la Nube e Internet de las Cosas
+Fecha: 2026-11-17
+
+== Parte 1. Arquitectura inicial: una sola EC2 ==
+
+Arquitectura:
+
+    Internet
+       |
+       v
+    EC2 (Nginx + Flask + Docker)
+
+¿Qué sucede si la EC2 falla?
+
+Todo el servicio cae. Nginx, Flask, Docker, el volumen EBS raíz y la IP
+pública están en la misma instancia. No hay réplica, health check ni
+failover, así que el usuario recibe errores hasta que alguien reinicie o
+reemplace la instancia. Es un single point of failure total.
+
+¿Qué sucede si aumenta el tráfico?
+
+La CPU, la memoria y el disco se saturan; Nginx empieza a devolver 502/504 y
+Flask aumenta la latencia. Al estar todo en una sola instancia, solo se puede
+escalar verticalmente (cambiar a un tipo más grande), lo que normalmente
+implica detener la instancia y tiene un límite físico. No hay elasticidad ni
+distribución de carga.
+
+¿Dónde existe un Single Point of Failure (SPOF)?
+
+- La instancia EC2 completa (Nginx + Flask + Docker).
+- El volumen EBS raíz.
+- La Availability Zone.
+- La IP pública / DNS.
+- La base de datos si corre localmente en la misma instancia.
+- El proceso de despliegue manual.
+
+== Parte 2. Evolución: Load Balancer + varias EC2 ==
+
+Arquitectura:
+
+                     Load Balancer
+                    /      |      \
+                   v       v       v
+                 EC2      EC2      EC2
+                  |        |        |
+                Flask    Flask    Flask
+
+¿Qué componente distribuye el tráfico?
+
+El Application Load Balancer (ALB), que escucha en 80/443, tiene un target
+group con las instancias y reparte las peticiones según sus reglas y health
+checks. También puede terminar TLS con ACM y aplicar WAF.
+
+¿Dónde se ejecuta cada instancia?
+
+En subnets privadas de una VPC, distribuidas en distintas Availability Zones
+(por ejemplo us-east-1a, us-east-1b y us-east-1c), dentro de un Auto Scaling
+Group. El ALB es el único componente público.
+
+¿Por qué conviene distribuir instancias entre Availability Zones?
+
+Porque cada AZ es un datacenter independiente con energía, red y refrigeración
+separadas. Si una AZ falla, las instancias de las otras dos siguen atendiendo.
+El ALB reparte el tráfico entre las AZ y el Auto Scaling Group puede reemplazar
+instancias en la AZ afectada. Esto mejora la alta disponibilidad y reduce la
+latencia para usuarios cercanos.
+
+== Parte 3. Stateless ==
+
+    Request 1 -> EC2-1
+    Request 2 -> EC2-2
+
+¿Qué pasa si la sesión está guardada únicamente en memoria de EC2-1?
+
+La segunda petición llega a EC2-2, que no conoce esa sesión: el usuario parece
+deslogueado, el carrito se pierde o la operación queda inconsistente. Las
+sticky sessions pueden mitigar el problema, pero siguen siendo frágiles: si
+EC2-1 falla, la sesión se pierde, y además se desbalancea la carga.
+
+La solución es externalizar el estado: Redis/ElastiCache, DynamoDB, la base de
+datos o tokens JWT firmados. Los archivos se guardan en S3, no en el disco
+local de cada instancia. Así cualquier instancia puede atender cualquier
+petición y se puede escalar o reemplazar sin perder estado.
+
+== Parte 4. Persistencia ==
+
+    EC2-1 -> archivo.txt
+    EC2-2 -> archivo.txt
+
+¿Son necesariamente el mismo archivo?
+
+No. Cada EC2 tiene su propio volumen EBS raíz y su propio filesystem. El
+`archivo.txt` de EC2-1 es un archivo distinto del de EC2-2. Si la instancia se
+reemplaza, el archivo local se pierde. No hay sincronización ni bloqueo entre
+instancias.
+
+Estrategias de almacenamiento compartido:
+
+- S3 para objetos: fotos, PDFs, actas, facturas y evidencias. Es la opción del
+  proyecto 05 para los documentos.
+- EFS para un filesystem POSIX compartido entre varias instancias.
+- RDS/Aurora para datos relacionales y transacciones.
+- DynamoDB para key-value a escala.
+- ElastiCache/Redis para sesiones y caché.
+- EBS solo para el sistema operativo y datos temporales; snapshots para
+  backup.
+
+En el proyecto 05: los documentos van a S3 y los metadatos a PostgreSQL. Los
+contenedores no deben guardar estado en su filesystem local.
+
+== Parte 5. Auto Scaling ==
+
+¿Qué problema resuelve Auto Scaling?
+
+Ajusta automáticamente el número de instancias según la demanda. Mantiene la
+capacidad disponible cuando sube el tráfico, reduce costos cuando baja,
+reemplaza instancias unhealthy y permite trabajar con varias AZs sin
+intervención manual.
+
+¿Diferencia entre escalar verticalmente y horizontalmente?
+
+- Vertical (scale up/down): cambiar a una instancia más grande o más pequeña.
+  Tiene un límite físico y normalmente requiere detener/rebootear.
+- Horizontal (scale out/in): agregar o quitar instancias. No tiene el mismo
+  límite, mejora la tolerancia a fallos y requiere una aplicación stateless,
+  un load balancer y almacenamiento compartido.
+
+¿Qué métrica podría usarse como señal de escalamiento?
+
+- CPU utilization > 60–70 %.
+- RequestCountPerTarget del ALB.
+- TargetResponseTime o latencia.
+- Profundidad de una cola (SQS).
+- Memoria (requiere CloudWatch agent).
+- Una métrica de negocio, por ejemplo usuarios activos o pedidos por minuto.
+
+Se implementa con target tracking, step scaling o scheduled scaling, con
+cooldown y health checks.
+
+== Parte 6. Diseño de la arquitectura ==
+
+    Internet
+       |
+       v
+    ALB (público, 80/443)
+       |
+       +---------+---------+
+       |         |         |
+      EC2       EC2       EC2      (subnets privadas, Multi-AZ)
+       |         |         |
+     Flask     Flask     Flask
+       \         |         /
+        \        |        /
+          RDS / Aurora
+             |
+            S3
+
+| Elemento | Público / Privado | Escalable | Persistente | Monitoreado |
+|---|---|---|---|---|
+| ALB | Público | Sí, horizontal gestionado | No, stateless | CloudWatch, access logs, WAF |
+| EC2 / ASG | Privado | Sí, horizontal | No, stateless | CloudWatch, SSM, X-Ray |
+| Nginx / Flask | Privado | Sí, réplicas | No | Logs y métricas |
+| RDS PostgreSQL | Privado | Vertical + read replicas | Sí, Multi-AZ y backups | Performance Insights, CloudWatch |
+| S3 | Privado, acceso por IAM | Sí, gestionado | Sí, versioning y lifecycle | CloudTrail, métricas, Macie |
+| ECR | Privado | N/A | Sí, imágenes versionadas | Scan on push, CloudTrail |
+| CloudWatch | N/A | N/A | Logs y métricas | N/A |
+| IAM / Secrets Manager | N/A | N/A | Secretos | CloudTrail |
+
+== Comparación: una EC2 vs múltiples EC2 + ALB + ASG ==
+
+| Aspecto | Una EC2 | Múltiples EC2 + ALB + ASG |
+|---|---|---|
+| Disponibilidad | SPOF, si falla cae todo | Alta, Multi-AZ y health checks |
+| Escalabilidad | Vertical, limitada y con downtime | Horizontal, elástica |
+| Costo | Fijo y sobreaprovisionado | Ajustado a la demanda |
+| Despliegue | Manual, con downtime | Rolling / blue-green |
+| Estado | Local y frágil | Externo: RDS, S3, Redis |
+| Operación | Manual | Automatizada y monitoreada |
+| Seguridad | SG simple | Subnets privadas, WAF, IAM, TLS |
+
+== ¿Por qué el diseño representa escalamiento horizontal? ==
+
+Porque la capacidad se incrementa agregando más instancias independientes
+detrás de un load balancer, no cambiando una sola instancia por una más
+grande. Cada instancia atiende una fracción del tráfico y el ASG agrega o
+quita réplicas según la demanda. Esto permite tolerar fallos, desplegar sin
+downtime y crecer de forma casi ilimitada, siempre que la aplicación sea
+stateless y el estado esté en servicios compartidos.
+
+== Reto final: evolución del laboratorio y Journey to Cloud ==
+
+    Docker local
+        |
+        v
+    Docker en EC2
+        |
+        v
+    Múltiples EC2
+        |
+        v
+    Load Balancer
+        |
+        v
+    Auto Scaling
+
+Explicación:
+
+1. Docker local: se valida la aplicación y el Dockerfile en el computador del
+   desarrollador. Es rápido, barato y de bajo riesgo, pero no es productivo.
+2. Docker en EC2: se traslada la misma imagen a la nube (IaaS). Se gana
+   disponibilidad y acceso, pero la operación sigue siendo manual.
+3. Múltiples EC2: se separa el estado y se prepara la aplicación para escalar
+   horizontalmente; aparecen los health checks y el almacenamiento compartido.
+4. Load Balancer: se distribuye el tráfico, se termina TLS y se evita que una
+   instancia sea el único punto de entrada.
+5. Auto Scaling: se ajusta la capacidad a la demanda, se reemplazan instancias
+   unhealthy y se optimiza el costo.
+
+Relación con Journey to Cloud (J2C):
+
+- J2C no es solo mover servidores: es un recorrido de madurez desde lo local y
+  manual hacia lo automatizado, elástico, observable y seguro.
+- Cada etapa reduce el esfuerzo operativo y aumenta la resiliencia, pero exige
+  cambios en procesos, personas y cultura (DevOps, IaC, CI/CD, monitoreo,
+  seguridad y FinOps).
+- Después de Auto Scaling, la evolución natural es usar servicios gestionados:
+  ECS/EKS/Fargate para contenedores, RDS/Aurora para la base, S3 para
+  objetos, CloudFront/WAF para el borde, Terraform/CloudFormation para IaC y
+  GitHub Actions/CodePipeline para CI/CD.
+- El objetivo final es que la infraestructura sea reproducible, observable y
+  capaz de recuperarse sola, no solo que la aplicación esté "en la nube".
+
+== Conclusión ==
+
+Una sola EC2 es suficiente para aprender y para un laboratorio, pero no para
+producción: concentra todos los SPOF y no escala horizontalmente. La evolución
+correcta es ALB + varias instancias en distintas AZs + Auto Scaling + estado
+externo (RDS/S3/Redis) + monitoreo. Esa es la base para dar el salto a
+servicios gestionados y a una arquitectura cloud-native.

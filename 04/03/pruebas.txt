@@ -1,0 +1,182 @@
+Workshop 3 — Docker en EC2 y despliegue de una aplicación
+Fecha: 2026-11-17
+Region: us-east-1
+Instancia: curso-ec2-phanor (i-0f2fd7baf1f67db952)
+Public IP: 54.152.85.71
+Private IP: 172.31.34.74
+
+== 1. Instalación de Docker ==
+
+$ docker --version
+Docker version 29.10.0, build fdd4b8e
+
+$ docker compose version
+Docker Compose version v5.7.1
+
+$ sudo docker run hello-world
+Unable to find image 'hello-world:latest' locally
+latest: Pulling from library/hello-world
+...
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+$ sudo usermod -aG docker $USER
+$ newgrp docker
+$ docker run hello-world
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+== 2. API Flask ==
+
+$ ls -lah
+total 20K
+drwxrwxr-x 2 ubuntu docker 4.0K Nov 17 04:35 .
+drwxrwxr-x 6 ubuntu ubuntu 4.0K Nov 17 04:35 ..
+-rw-rw-r-- 1 ubuntu docker  166 Nov 17 04:35 Dockerfile
+-rw-rw-r-- 1 ubuntu docker  245 Nov 17 04:35 app.py
+-rw-rw-r-- 1 ubuntu docker    6 Nov 17 04:35 requirements.txt
+
+$ docker build -t ec2-flask-api .
+[+] Building 12.4s (10/10) FINISHED
+ => [1/5] FROM docker.io/library/python:3.12-slim
+ => [2/5] WORKDIR /app
+ => [3/5] COPY requirements.txt .
+ => [4/5] RUN pip install --no-cache-dir -r requirements.txt
+ => [5/5] COPY app.py .
+ => exporting to image
+ => => naming to docker.io/library/ec2-flask-api:latest
+
+$ docker images
+IMAGE                  ID             DISK USAGE   CONTENT SIZE   EXTRA
+ec2-flask-api:latest   d4016441c64e        198MB         48.3MB
+hello-world:latest     1e4c05b897a7       25.9kB         9.49kB    U
+
+$ docker run -d --name api -p 5000:5000 ec2-flask-api
+185c5308fc6a0859d52c233c5e2f9d7254dd986cf0503ac03c8e264813eebed0
+
+$ docker ps
+CONTAINER ID   IMAGE           COMMAND           CREATED         STATUS         PORTS                                         NAMES
+185c5308fc6a   ec2-flask-api   "python app.py"   8 seconds ago   Up 7 seconds   0.0.0.0:5000->5000/tcp, [::]:5000->5000/tcp   api
+
+$ curl http://localhost:5000/health
+{"status":"ok"}
+
+$ curl http://localhost:5000/
+{"message":"Hola desde EC2"}
+
+== 3. Acceso desde Internet (puerto 5000) ==
+
+Se agregó la regla Custom TCP 5000 desde My IP en el Security Group.
+
+PS C:\Users\phano\Documents\9no\IoT> curl.exe http://54.152.85.71:5000/health
+{"status":"ok"}
+
+PS C:\Users\phano\Documents\9no\IoT> curl.exe http://54.152.85.71:5000/
+{"message":"Hola desde EC2"}
+
+Navegador: http://54.152.85.71:5000
+{"message":"Hola desde EC2"}
+
+== 4. Docker Compose ==
+
+$ docker stop api
+api
+
+$ docker rm api
+api
+
+$ cat > docker-compose.yml <<'EOF'
+services:
+  api:
+    build: ./app
+    container_name: api
+    ports:
+      - "5000:5000"
+EOF
+
+$ docker compose up -d --build
+[+] Building 0.7s (12/12) FINISHED
+ ✔ Image ec2-lab-api       Built
+ ✔ Network ec2-lab_default Created
+ ✔ Container api           Started
+
+$ docker compose ps
+NAME      IMAGE         COMMAND           SERVICE   CREATED         STATUS         PORTS
+api       ec2-lab-api   "python app.py"   api       2 seconds ago   Up 2 seconds   0.0.0.0:5000->5000/tcp, [::]:5000->5000/tcp
+
+$ curl http://localhost:5000/health
+{"status":"ok"}
+
+== 5. Nginx como reverse proxy ==
+
+$ cat > nginx/nginx.conf <<'EOF'
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://api:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+$ cat > docker-compose.yml <<'EOF'
+services:
+  api:
+    build: ./app
+    container_name: api
+    expose:
+      - "5000"
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+EOF
+
+$ docker compose down
+[+] down 2/2
+ ✔ Container api           Removed
+ ✔ Network ec2-lab_default Removed
+
+$ docker compose up -d --build
+[+] up 15/15
+ ✔ Image nginx:alpine      Pulled
+ ✔ Image ec2-lab-api       Built
+ ✔ Network ec2-lab_default Created
+ ✔ Container api           Started
+ ✔ Container nginx         Started
+
+$ docker compose ps
+NAME      IMAGE          COMMAND                  SERVICE   CREATED         STATUS         PORTS
+api       ec2-lab-api    "python app.py"          api       6 seconds ago   Up 5 seconds   5000/tcp
+nginx     nginx:alpine   "/docker-entrypoint.…"   nginx     6 seconds ago   Up 5 seconds   0.0.0.0:80->80/tcp, [::]:80->80/tcp
+
+$ curl http://localhost/health
+{"status":"ok"}
+
+== 6. Acceso desde Internet (puerto 80) ==
+
+Se agregó la regla HTTP 80 desde My IP en el Security Group.
+
+Navegador: http://54.152.85.71
+{"message":"Hola desde EC2"}
+
+== 7. Reto: hostname del contenedor, hostname de EC2 y hora ==
+
+$ curl http://localhost/
+{"container_hostname":"6c32670796b2","ec2_hostname":"ip-172-31-34-74","message":"Hola desde EC2","time":"2026-11-17T04:49:29.290667+00:00"}
+
+Nota: al intentar pegar las líneas YAML de `environment:` directamente en la
+shell, bash interpretó `environment:` como un comando y respondió
+`command not found`. Se corrigió editando docker-compose.yml con nano; luego
+`docker compose up -d --build` reconstruyó la API y el reto respondió
+correctamente.

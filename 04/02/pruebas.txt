@@ -1,0 +1,307 @@
+Workshop 2 — Administración de Linux en EC2
+Fecha: 2026-11-17
+Region: us-east-1
+Instancia: curso-ec2-phanor
+Instance ID: i-0f2fd7baf1f67db952
+Public IP: 54.152.85.71
+Private IP: 172.31.34.74
+Usuario: ubuntu
+Hostname: ip-172-31-34-74
+
+== Parte 1. Exploración del servidor ==
+
+$ pwd
+/home/ubuntu
+
+$ ls -lah
+total 28K
+drwxr-x--- 4 ubuntu ubuntu 4.0K Nov 17 03:44 .
+drwxr-xr-x 3 root   root   4.0K Nov 17 03:17 ..
+-rw-r--r-- 1 ubuntu ubuntu  220 Mar 31  2024 .bash_logout
+-rw-r--r-- 1 ubuntu ubuntu 3.7K Mar 31  2024 .bashrc
+drwx------ 2 ubuntu ubuntu 4.0K Nov 17 03:44 .cache
+-rw-r--r-- 1 ubuntu ubuntu  807 Mar 31  2024 .profile
+drwx------ 2 ubuntu ubuntu 4.0K Nov 17 03:17 .ssh
+
+$ uptime
+ 04:02:36 up 45 min,  1 user,  load average: 0.00, 0.00, 0.00
+
+$ nproc
+2
+
+$ df -h
+Filesystem       Size  Used Avail Use% Mounted on
+/dev/root         15G  2.0G   13G  14% /
+tmpfs            455M     0  455M   0% /dev/shm
+tmpfs            182M  884K  182M   1% /run
+tmpfs            5.0M     0  5.0M   0% /run/lock
+efivarfs         128K  3.1K  120K   3% /sys/firmware/efi/efivars
+/dev/nvme0n1p16  881M  114M  706M  14% /boot
+/dev/nvme0n1p15  105M  6.2M   99M   6% /boot/efi
+tmpfs             91M   12K   91M   1% /run/user/1000
+
+$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           909Mi       302Mi       297Mi       2.7Mi       419Mi       607Mi
+Swap:             0B          0B          0B
+
+$ ps aux | head -20
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  1.4  22660 13784 ?        Ss   03:17   0:01 /sbin/init
+root           2  0.0  0.0      0     0 ?        S    03:17   0:00 [kthreadd]
+root           3  0.0  0.0      0     0 ?        S    03:17   0:00 [pool_workqueue_release]
+root           4  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-rcu_gp]
+root           5  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-sync_wq]
+root           6  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-kvfree_rcu_reclaim]
+root           7  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-slub_flushwq]
+root           8  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-netns]
+root          10  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/0:0H-kblockd]
+root          13  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-mm_percpu_wq]
+root          14  0.0  0.0      0     0 ?        S    03:17   0:00 [ksoftirqd/0]
+root          15  0.0  0.0      0     0 ?        S<   03:17   0:00 [pr/ttyS0]
+root          16  0.0  0.0      0     0 ?        I    03:17   0:00 [rcu_sched]
+root          17  0.0  0.0      0     0 ?        S    03:17   0:00 [rcu_exp_par_gp_kthread_worker/0]
+root          18  0.0  0.0      0     0 ?        S    03:17   0:00 [rcu_exp_gp_kthread_worker]
+root          19  0.0  0.0      0     0 ?        S    03:17   0:00 [migration/0]
+root          20  0.0  0.0      0     0 ?        S    03:17   0:00 [kprobe-optimizer]
+root          21  0.0  0.0      0     0 ?        S    03:17   0:00 [idle_inject/0]
+root          22  0.0  0.0      0     0 ?        S    03:17   0:00 [cpuhp/0]
+
+== Parte 2. Estructura de trabajo ==
+
+$ mkdir -p ~/ec2-lab/{scripts,logs,data}
+$ cd ~/ec2-lab
+$ echo "EC2 laboratorio" > data/identificacion.txt
+$ cat data/identificacion.txt
+EC2 laboratorio
+
+$ ls -R
+.:
+data  logs  scripts
+
+./data:
+identificacion.txt
+
+./logs:
+
+./scripts:
+
+== Parte 3. Procesos ==
+
+$ ps aux | head
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  1.4  22660 13784 ?        Ss   03:17   0:01 /sbin/init
+root           2  0.0  0.0      0     0 ?        S    03:17   0:00 [kthreadd]
+root           3  0.0  0.0      0     0 ?        S    03:17   0:00 [pool_workqueue_release]
+root           4  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-rcu_gp]
+root           5  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-sync_wq]
+root           6  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-kvfree_rcu_reclaim]
+root           7  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-slub_flushwq]
+root           8  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/R-netns]
+root          10  0.0  0.0      0     0 ?        I<   03:17   0:00 [kworker/0:0H-kblockd]
+
+$ ps aux | grep ssh
+root        1153  0.0  0.8  12036  8264 ?        Ss   03:44   0:00 sshd: /usr/sbin/sshd -D -o AuthorizedKeysCommand /usr/share/ec2-instance-connect/eic_run_authorized_keys %u %f -o AuthorizedKeysCommandUser ec2-instance-connect [listener] 0 of 10-100 startups
+root        1154  0.0  1.1  14756 10520 ?        Ss   03:44   0:00 sshd: ubuntu [priv]
+ubuntu      1264  0.0  0.7  15012  7236 ?        S    03:44   0:00 sshd: ubuntu@pts/0
+ubuntu      1356  0.0  0.2   7088  2232 pts/0    S+   04:04   0:00 grep --color=auto ssh
+
+$ ps -p 1 -o pid,user,comm,args
+    PID USER     COMMAND         COMMAND
+      1 root     systemd         /sbin/init
+
+$ pgrep -a sshd
+1153 sshd: /usr/sbin/sshd -D -o AuthorizedKeysCommand /usr/share/ec2-instance-connect/eic_run_authorized_keys %u %f -o AuthorizedKeysCommandUser ec2-instance-connect [listener] 0 of 10-100 startups
+1154 sshd: ubuntu [priv]
+1264 sshd: ubuntu@pts/0
+
+$ pgrep -a systemd-journald
+pgrep: pattern that searches for process name longer than 15 characters will result in zero matches
+Try `pgrep -f' option to match against the complete command line.
+
+Nota: pgrep limita el nombre del proceso a 15 caracteres. Para buscar
+systemd-journald hay que usar la opción -f:
+    pgrep -af systemd-journald
+o bien:
+    ps -C systemd-journald -o pid,user,comm,args
+
+$ ps aux --no-headers | wc -l
+113
+
+== Parte 4. Logs ==
+
+$ sudo journalctl -n 30 --no-pager
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1159]: Listening on gpg-agent.socket - GnuPG cryptographic agent and passphrase cache.
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1159]: Listening on keyboxd.socket - GnuPG public key management service.
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1159]: Listening on pk-debconf-helper.socket - debconf communication socket.
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1159]: Listening on snapd.session-agent.socket - REST API socket for snapd user session agent.
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1159]: Listening on dbus.socket - D-Bus User Message Bus Socket.
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1159]: Listening on gpg-agent-ssh.socket - GnuPG cryptographic agent (ssh-agent emulation).
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1159]: Reached target sockets.target - Sockets.
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1159]: Reached target basic.target - Basic System.
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1]: Started user@1000.service - User Manager for UID 1000.
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1159]: Reached target default.target - Main User Target.
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1159]: Startup finished in 142ms.
+Nov 17 03:44:40 ip-172-31-34-74 systemd[1]: Started session-3.scope - Session 3 of User ubuntu.
+Nov 17 03:45:01 ip-172-31-34-74 CRON[1317]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+Nov 17 03:45:01 ip-172-31-34-74 CRON[1318]: (root) CMD (command -v debian-sa1 > /dev/null && debian-sa1 1 1)
+Nov 17 03:45:01 ip-172-31-34-74 CRON[1317]: pam_unix(cron:session): session closed for user root
+Nov 17 03:50:04 ip-172-31-34-74 systemd[1159]: launchpadlib-cache-clean.service - Clean up old files in the Launchpadlib cache was skipped because of an unmet condition check (ConditionPathExists=/home/ubuntu/.launchpadlib/api.launchpad.net/cache).
+Nov 17 03:50:04 ip-172-31-34-74 systemd[1]: Starting sysstat-collect.service - system activity accounting tool...
+Nov 17 03:50:04 ip-172-31-34-74 systemd[1]: sysstat-collect.service: Deactivated successfully.
+Nov 17 03:50:04 ip-172-31-34-74 systemd[1]: Finished sysstat-collect.service - system activity accounting tool.
+Nov 17 03:55:01 ip-172-31-34-74 CRON[1332]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+Nov 17 03:55:01 ip-172-31-34-74 CRON[1333]: (root) CMD (command -v debian-sa1 > /dev/null && debian-sa1 1 1)
+Nov 17 03:55:01 ip-172-31-34-74 CRON[1332]: pam_unix(cron:session): session closed for user root
+Nov 17 04:00:04 ip-172-31-34-74 systemd[1]: Starting sysstat-collect.service - system activity accounting tool...
+Nov 17 04:00:04 ip-172-31-34-74 systemd[1]: sysstat-collect.service: Deactivated successfully.
+Nov 17 04:00:04 ip-172-31-34-74 systemd[1]: Finished sysstat-collect.service - system activity accounting tool.
+Nov 17 04:05:01 ip-172-31-34-74 CRON[1357]: pam_unix(cron:session): session opened for user root(uid=0) by root(uid=0)
+Nov 17 04:05:01 ip-172-31-34-74 CRON[1358]: (root) CMD (command -v debian-sa1 > /dev/null && debian-sa1 1 1)
+Nov 17 04:05:01 ip-172-31-34-74 CRON[1357]: pam_unix(cron:session): session closed for user root
+Nov 17 04:05:45 ip-172-31-34-74 sudo[1366]:   ubuntu : TTY=pts/0 ; PWD=/home/ubuntu/ec2-lab ; USER=root ; COMMAND=/usr/bin/journalctl -n 30 --no-pager
+Nov 17 04:05:45 ip-172-31-34-74 sudo[1366]: pam_unix(sudo:session): session opened for user root(uid=0) by ubuntu(uid=1000)
+
+$ sudo systemctl status ssh --no-pager
+● ssh.service - OpenBSD Secure Shell server
+     Loaded: loaded (/usr/lib/systemd/system/ssh.service; disabled; preset: enabled)
+    Drop-In: /usr/lib/systemd/system/ssh.service.d
+             └─ec2-instance-connect.conf
+     Active: active (running) since Tue 2026-11-17 03:44:25 UTC; 21min ago
+TriggeredBy: ● ssh.socket
+       Docs: man:sshd(8)
+             man:sshd_config(5)
+    Process: 1151 ExecStartPre=/usr/sbin/sshd -t (code=exited, status=0/SUCCESS)
+   Main PID: 1153 (sshd)
+      Tasks: 1 (limit: 627)
+     Memory: 4.5M (peak: 4.9M)
+        CPU: 55ms
+     CGroup: /system.slice/ssh.service
+             └─1153 "sshd: /usr/sbin/sshd -D -o AuthorizedKeysCommand /usr/share/ec2-instance-connect/eic_run_authorized_keys %u %f -o Authorize…
+
+Nov 17 03:44:25 ip-172-31-34-74 systemd[1]: Starting ssh.service - OpenBSD Secure Shell server...
+Nov 17 03:44:25 ip-172-31-34-74 sshd[1153]: Server listening on 0.0.0.0 port 22.
+Nov 17 03:44:25 ip-172-31-34-74 sshd[1153]: Server listening on :: port 22.
+Nov 17 03:44:25 ip-172-31-34-74 systemd[1]: Started ssh.service - OpenBSD Secure Shell server.
+Nov 17 03:44:40 ip-172-31-34-74 sshd[1154]: Accepted publickey for ubuntu from 191.95.162.60 port 9392 ssh2: RSA SHA256:llsI95HcEyghgQ…sH7unMQaRU
+Nov 17 03:44:40 ip-172-31-34-74 sshd[1154]: pam_unix(sshd:session): session opened for user ubuntu(uid=1000) by ubuntu(uid=0)
+Hint: Some lines were ellipsized, use -l to show in full.
+
+== Parte 5. Script base ==
+
+$ cat scripts/system_info.sh
+#!/bin/bash
+
+echo "Hostname: $(hostname)"
+echo "Usuario: $(whoami)"
+echo "Fecha: $(date)"
+echo "Uptime:"
+uptime
+
+echo "Disco:"
+df -h /
+
+echo "Memoria:"
+free -h
+
+$ chmod +x scripts/system_info.sh
+$ ./scripts/system_info.sh
+Hostname: ip-172-31-34-74
+Usuario: ubuntu
+Fecha: Tue Nov 17 04:06:47 UTC 2026
+Uptime:
+ 04:06:47 up 49 min,  1 user,  load average: 0.00, 0.00, 0.00
+Disco:
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root        15G  2.0G   13G  14% /
+Memoria:
+               total        used        free      shared  buff/cache   available
+Mem:           909Mi       303Mi       294Mi       2.7Mi       421Mi       606Mi
+Swap:             0B          0B          0B
+
+== Parte 6. Reto: script con argumento ==
+
+$ cat scripts/system_info.sh
+#!/bin/bash
+
+TARGET="${1:-/}"
+
+echo "Hostname: $(hostname)"
+echo "Usuario: $(whoami)"
+echo "Fecha: $(date)"
+echo "Uptime:"
+uptime
+
+echo
+echo "Filesystem donde se encuentra $TARGET:"
+df -hT "$TARGET"
+
+echo
+echo "Mount point:"
+findmnt -T "$TARGET"
+
+echo
+echo "Memoria:"
+free -h
+
+echo
+echo "Procesos con mayor uso de CPU:"
+ps aux --sort=-%cpu | head -6
+
+$ ./scripts/system_info.sh /var/log
+Hostname: ip-172-31-34-74
+Usuario: ubuntu
+Fecha: Tue Nov 17 04:07:46 UTC 2026
+Uptime:
+ 04:07:46 up 50 min,  1 user,  load average: 0.00, 0.00, 0.00
+
+Filesystem donde se encuentra /var/log:
+Filesystem     Type  Size  Used Avail Use% Mounted on
+/dev/root      ext4   15G  2.0G   13G  14% /
+
+Mount point:
+TARGET
+  SOURCE         FSTYPE OPTIONS
+/ /dev/nvme0n1p1 ext4   rw,relatime,discard,errors=remount-ro,commit=30
+
+Memoria:
+               total        used        free      shared  buff/cache   available
+Mem:           909Mi       303Mi       294Mi       2.7Mi       421Mi       606Mi
+Swap:             0B          0B          0B
+
+Procesos con mayor uso de CPU:
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  1.4  22660 13820 ?        Ss   03:17   0:01 /sbin/init
+root        1029  0.0  2.2 1832820 20960 ?       Ssl  03:17   0:01 /snap/amazon-ssm-agent/13349/amazon-ssm-agent
+ubuntu      1264  0.0  0.7  15012  7236 ?        S    03:44   0:00 sshd: ubuntu@pts/0
+root         667  0.0  4.6 2002320 43192 ?       Ssl  03:17   0:00 /snap/snapd/current/usr/lib/snapd/snapd
+root        1331  0.0  0.0      0     0 ?        I    03:50   0:00 [kworker/0:0-events]
+
+$ ./scripts/system_info.sh /boot
+Hostname: ip-172-31-34-74
+Usuario: ubuntu
+Fecha: Tue Nov 17 04:07:51 UTC 2026
+Uptime:
+ 04:07:51 up 50 min,  1 user,  load average: 0.08, 0.02, 0.01
+
+Filesystem donde se encuentra /boot:
+Filesystem      Type  Size  Used Avail Use% Mounted on
+/dev/nvme0n1p16 ext4  881M  114M  706M  14% /boot
+
+Mount point:
+TARGET
+      SOURCE          FSTYPE OPTIONS
+/boot /dev/nvme0n1p16 ext4   rw,relatime
+
+Memoria:
+               total        used        free      shared  buff/cache   available
+Mem:           909Mi       303Mi       294Mi       2.7Mi       421Mi       605Mi
+Swap:             0B          0B          0B
+
+Procesos con mayor uso de CPU:
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  1.4  22660 13820 ?        Ss   03:17   0:01 /sbin/init
+root        1029  0.0  2.2 1832820 20960 ?       Ssl  03:17   0:01 /snap/amazon-ssm-agent/13349/amazon-ssm-agent
+ubuntu      1264  0.0  0.7  15012  7236 ?        S    03:44   0:00 sshd: ubuntu@pts/0
+root         667  0.0  4.6 2002320 43192 ?        Ssl  03:17   0:00 /snap/snapd/current/usr/lib/snapd/snapd
+root        1331  0.0  0.0      0     0 ?        I    03:50   0:00 [kworker/0:0-events]

@@ -1,0 +1,142 @@
+Workshop 4 — Seguridad de red en EC2
+Curso: Computación en la Nube e Internet de las Cosas
+Fecha: 2026-11-17
+Instancia: curso-ec2-phanor (i-0f2fd7baf1f67db952)
+Public IP: 54.152.85.71
+Security Group: curso-ec2-sg (sg-048da8f1f89daf923)
+
+== Parte 1. Auditoría de puertos ==
+
+Comando ejecutado:
+
+    sudo ss -tulpn
+
+Interpretación de los puertos relevantes:
+
+| Puerto | Servicio | Proceso en el host | ¿Escucha en el host? |
+|---:|---|---|---|
+| 22 | SSH | sshd | Sí, 0.0.0.0:22 |
+| 80 | HTTP / Nginx | docker-proxy (Nginx dentro del contenedor) | Sí, 0.0.0.0:80 |
+| 5000 | Flask | — | No; solo existe dentro de la red Docker |
+| 5432 | PostgreSQL | — | No; no está desplegado en esta instancia |
+
+Nota: Docker publica el puerto 80 mediante docker-proxy/iptables. El proceso
+Nginx realmente corre dentro del contenedor; en el host se ve el proxy de
+Docker. El puerto 5000 de Flask no se publica porque el compose final usa
+`expose: "5000"` y solo Nginx lo alcanza por la red interna.
+
+== Parte 2. Análisis del Security Group ==
+
+Estado observado antes de la limpieza: el Security Group permitía SSH (22),
+HTTP (80) y TCP 5000, todos desde la IP administrativa. La regla del 5000 era
+un remanente de la prueba directa de Flask y ya no era necesaria, porque el
+compose final no publica ese puerto en el host.
+
+| Puerto | Servicio | ¿Necesita ser público? | ¿Por qué? |
+|---:|---|---|---|
+| 22 | SSH | No | Solo para administración. Debe restringirse a la IP administrativa, VPN o Session Manager. |
+| 80 | HTTP (Nginx) | Sí, con control | Es la entrada web. En producción debe redirigir a 443/TLS y puede ir detrás de WAF. En el laboratorio se restringió a My IP. |
+| 5000 | Flask | No | Solo Nginx debe hablar con Flask por la red interna de Docker. No debe publicarse en el host ni en el Security Group. |
+| 5432 | PostgreSQL | No | Contiene datos sensibles. Debe quedar en una red privada y solo la API debe poder conectarse. |
+
+== Parte 3. Principio de mínimo privilegio ==
+
+Propuesta:
+
+    Internet
+       |
+       +--> TCP 80/443 --> Nginx --> Flask (red interna)
+       |
+    Administración
+       |
+       +--> TCP 22 --> solo IP autorizada / VPN / SSM
+
+    Internet -X-> TCP 5000
+    Internet -X-> TCP 5432
+
+Reglas propuestas:
+
+| Regla | Puerto | Protocolo | Origen | Justificación |
+|---|---:|---|---|---|
+| SSH administrativo | 22 | TCP | IP administrativa/32 | Acceso remoto controlado |
+| HTTP | 80 | TCP | 0.0.0.0/0 (o My IP en el laboratorio) | Entrada web pública |
+| HTTPS | 443 | TCP | 0.0.0.0/0 | TLS en producción (futuro) |
+| Flask | 5000 | — | Sin regla | Solo red Docker interna |
+| PostgreSQL | 5432 | — | Sin regla | Solo red Docker/privada |
+
+Además del Security Group, se recomienda:
+
+- Deshabilitar el login por contraseña en SSH y usar solo claves.
+- Mantener el sistema y las imágenes actualizadas.
+- Usar TLS (443) con Let's Encrypt o ACM.
+- No publicar PostgreSQL; si se usa RDS, colocarlo en subnets privadas y
+  permitir solo el Security Group de la aplicación.
+- Usar Secrets Manager o Parameter Store para las credenciales.
+- Monitorear con CloudWatch, GuardDuty y logs de Nginx/Flask.
+- Revisar la cadena DOCKER-USER si se usa un firewall dentro del host, porque
+  Docker puede modificar iptables y saltarse reglas de ufw para puertos
+  publicados.
+
+== Parte 4. Análisis ==
+
+1. ¿Qué riesgo existe al abrir SSH al mundo?
+
+Abrir el puerto 22 a 0.0.0.0/0 expone el servicio SSH a escaneos y ataques de
+fuerza bruta, credential stuffing y explotación de vulnerabilidades de sshd.
+Un acceso no autorizado permite ejecutar comandos, instalar mineros,
+exfiltrar datos o usar la instancia como parte de una botnet. Se mitiga con
+autenticación por clave, restricción de origen, fail2ban, MFA/VPN, Session
+Manager y monitoreo.
+
+2. ¿Qué diferencia existe entre Security Group y firewall dentro del sistema
+operativo?
+
+El Security Group es un firewall stateful a nivel de instancia/interfaz de
+red; se aplica antes de que el tráfico llegue al sistema operativo y permite
+o deniega por IP, puerto y protocolo. El firewall del sistema operativo
+(ufw, nftables, iptables) corre dentro de la instancia y puede filtrar por
+proceso, usuario o interfaz. Son complementarios (defensa en profundidad).
+Un detalle importante: Docker modifica iptables para publicar puertos y puede
+saltarse reglas de ufw; por eso el Security Group sigue siendo la primera
+barrera y se debe revisar la cadena DOCKER-USER.
+
+3. ¿Por qué no debemos exponer PostgreSQL públicamente si no es necesario?
+
+Porque la base de datos contiene información sensible y su exposición directa
+aumenta la superficie de ataque. Un PostgreSQL público puede sufrir fuerza
+bruta, credenciales débiles, falta de TLS, exploits o denegación de servicio.
+Lo correcto es mantenerlo en una red privada, permitir solo el Security Group
+de la aplicación, usar contraseñas robustas, TLS y backups.
+
+4. ¿Por qué Nginx puede ser el único punto público de entrada?
+
+Porque Nginx actúa como reverse proxy: recibe el tráfico en 80/443, aplica
+TLS, enrutamiento, límites de tasa, logs y reglas de seguridad, y reenvía
+solo las peticiones necesarias a Flask por la red interna. Así, Flask y
+PostgreSQL quedan ocultos y solo se expone un servicio que se puede parchear
+y monitorear de forma centralizada.
+
+== Reto. Propuesta de Security Group para Flask detrás de Nginx ==
+
+| Regla | Puerto | Protocolo | Origen | Justificación |
+|---|---:|---|---|---|
+| SSH admin | 22 | TCP | IP administrativa/32 | Administración remota |
+| HTTP | 80 | TCP | 0.0.0.0/0 (o My IP en laboratorio) | Entrada web |
+| HTTPS | 443 | TCP | 0.0.0.0/0 | Entrada web segura |
+| Flask | 5000 | — | Sin regla | Solo Nginx en la red Docker |
+| PostgreSQL | 5432 | — | Sin regla | Solo la API en la red interna |
+
+El resultado esperado es:
+
+    Internet -> 80/443 -> Nginx -> Flask:5000 (interno)
+    Administración -> 22 -> IP autorizada
+    Internet -X-> 5000
+    Internet -X-> 5432
+
+== Conclusión ==
+
+La superficie de exposición se reduce dejando solo 80/443 para los usuarios y
+22 restringido para administración. Flask y PostgreSQL no deben tener reglas
+públicas; se comunican por la red interna de Docker. El Security Group es la
+primera capa, pero debe complementarse con un firewall en el host, TLS,
+credenciales seguras, actualizaciones y monitoreo.

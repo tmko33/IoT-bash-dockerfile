@@ -1,0 +1,18 @@
+Workshop 6 — EC2 en una arquitectura escalable
+Fecha: 2026-11-17
+Tipo de taller: análisis y diseño
+
+Este taller no requiere ejecutar comandos en AWS ni crear un ALB/Auto Scaling
+real. El entregable es el diagrama de arquitectura y las respuestas de
+análisis.
+
+Evidencias:
+
+- diagrama.md (fuente Mermaid)
+- capturas/01-arquitectura.png (diagrama renderizado)
+- preguntas.txt (respuestas, comparación y propuesta de evolución)
+
+Si el profesor exige evidencia práctica de ALB + Auto Scaling, se puede
+desplegar una arquitectura temporal con Launch Template, Target Group, ALB y
+Auto Scaling Group, y luego eliminarla para evitar costos. Para el alcance
+escrito del taller, el diseño y el análisis son suficientes.

@@ -1,0 +1,97 @@
+Workshop 1 — Crear y conectar una instancia EC2
+Fecha: 2026-11-17
+Region: us-east-1
+Availability Zone: us-east-1c
+Instancia: curso-ec2-phanor
+Instance ID: i-0f2fd7baf1f67db952
+AMI: ami-08b275ac6cc5dbefb (Ubuntu Server 24.04 LTS 24.04.5)
+Instance Type: t3.micro
+VPC: vpc-0877ddc92af536a28
+Subnet: subnet-0e4e125d709d544a7
+Public IP: 54.152.85.71
+Private IP: 172.31.34.74
+Security Group: curso-ec2-sg (sg-048da8f1f89daf923)
+Key Pair: curso-ec2-key
+
+== Conexion SSH ==
+
+PS C:\Users\phano> ssh -i "$env:USERPROFILE\.ssh\curso-ec2-key.pem" ubuntu@54.152.85.71
+The authenticity of host '54.152.85.71 (54.152.85.71)' can't be established.
+ED25519 key fingerprint is SHA256:ylIcW+KfWlpTP0WCBrHAPV/LQX23JXpuZIXfiMi72Dk.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '54.152.85.71' (ED25519) to the list of known hosts.
+Welcome to Ubuntu 24.04.5 LTS (GNU/Linux 7.0.0-1014-aws x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+ System information as of Tue Nov 17 03:44:40 UTC 2026
+
+  System load:  0.0                Temperature:           -273.1 C
+  Usage of /:   13.6% of 14.46GB   Processes:             113
+  Memory usage: 24%                Users logged in:       0
+  Swap usage:   0%                 IPv4 address for ens5: 172.31.34.74
+
+Expanded Security Maintenance for Applications is not enabled.
+
+0 updates can be applied immediately.
+
+Enable ESM Apps to receive additional future security updates.
+See https://ubuntu.com/esm or run: sudo pro status
+
+
+The list of available updates is more than a week old.
+To check for new updates run: sudo apt update
+
+
+The programs included with the Ubuntu system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+applicable law.
+
+To run a command as administrator (user "root"), use "sudo <command>".
+See "man sudo_root" for details.
+
+ubuntu@ip-172-31-34-74:~$
+
+== Verificacion del sistema ==
+
+ubuntu@ip-172-31-34-74:~$ whoami
+ubuntu
+ubuntu@ip-172-31-34-74:~$ hostname
+ip-172-31-34-74
+ubuntu@ip-172-31-34-74:~$ uname -a
+Linux ip-172-31-34-74 7.0.0-1014-aws #14~24.04.1-Ubuntu SMP PREEMPT Fri Sep 18 21:24:59 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+ubuntu@ip-172-31-34-74:~$ df -h
+Filesystem       Size  Used Avail Use% Mounted on
+/dev/root         15G  2.0G   13G  14% /
+tmpfs            455M     0  455M   0% /dev/shm
+tmpfs            182M  884K  182M   1% /run
+tmpfs            5.0M     0  5.0M   0% /run/lock
+efivarfs         128K  3.1K  120K   3% /sys/firmware/efi/efivars
+/dev/nvme0n1p16  881M  114M  706M  14% /boot
+/dev/nvme0n1p15  105M  6.2M   99M   6% /boot/efi
+tmpfs             91M   12K   91M   1% /run/user/1000
+ubuntu@ip-172-31-34-74:~$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           909Mi       302Mi       297Mi       2.7Mi       419Mi       607Mi
+Swap:             0B          0B          0B
+ubuntu@ip-172-31-34-74:~$ ip addr
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute
+       valid_lft forever preferred_lft forever
+2: ens5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9001 qdisc mq state UP group default qlen 1000
+    link/ether 0e:ff:c7:20:51:73 brd ff:ff:ff:ff:ff:ff
+    altname enp0s5
+    inet 172.31.34.74/20 metric 100 brd 172.31.47.255 scope global dynamic ens5
+       valid_lft 1822sec preferred_lft 1822sec
+    inet6 fe80::cff:c7ff:fe20:5173/64 scope link
+       valid_lft forever preferred_lft forever
+ubuntu@ip-172-31-34-74:~$

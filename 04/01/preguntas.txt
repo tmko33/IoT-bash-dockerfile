@@ -1,0 +1,79 @@
+Workshop 1 — Crear y conectar una instancia EC2
+Curso: Computación en la Nube e Internet de las Cosas
+Fecha: 2026-11-17
+
+== Parte 1. Preparación ==
+
+1. ¿Qué diferencia existe entre una AMI y un Instance Type?
+
+La AMI es la plantilla del sistema operativo y del software que viene
+preinstalado (por ejemplo, Ubuntu 24.04). El Instance Type es el hardware
+virtual que se asigna: cantidad de vCPU, memoria RAM, capacidad de red y
+almacenamiento efímero. La AMI define qué se ejecuta; el Instance Type
+define con cuántos recursos se ejecuta.
+
+2. ¿Qué función cumple el Security Group?
+
+Es un firewall virtual a nivel de instancia o interfaz de red. Define reglas
+de entrada y salida por protocolo, puerto y origen/destino. Por defecto
+deniega todo lo que no esté permitido explícitamente. En este laboratorio
+solo permite SSH (TCP 22) desde mi IP.
+
+3. ¿Por qué SSH requiere una autenticación segura?
+
+Porque SSH entrega una shell remota con capacidad de ejecutar comandos y
+modificar el servidor. Por eso se usa autenticación por clave pública/privada
+en lugar de contraseñas: el servidor guarda la clave pública y el cliente
+demuestra que posee la privada. Además se restringe el origen y se puede
+deshabilitar el acceso de root.
+
+4. ¿Por qué debemos seleccionar cuidadosamente la región?
+
+Porque la región determina la latencia hacia los usuarios, los precios, la
+disponibilidad de servicios y el cumplimiento legal sobre dónde se almacenan
+los datos. Para este curso conviene usar una sola región, por ejemplo
+us-east-1, para que EC2, ECR y S3 estén en el mismo lugar.
+
+== Parte 6. Actividad de análisis ==
+
+Tabla de componentes:
+
+| Elemento | Valor | ¿Para qué sirve? |
+|---|---|---|
+| AMI | ami-08b275ac6cc5dbefb (Ubuntu Server 24.04 LTS 24.04.5) | Plantilla del SO y software base |
+| Instance Type | t3.micro | Define CPU, RAM y red |
+| Region | us-east-1 | Ubicación de los recursos |
+| Availability Zone | us-east-1c | Datacenter dentro de la región |
+| VPC | vpc-0877ddc92af536a28 | Red virtual aislada |
+| Subnet | subnet-0e4e125d709d544a7 | Rango de IPs dentro de la VPC |
+| Public IP | 54.152.85.71 | Acceso desde Internet |
+| Private IP | 172.31.34.74 | Comunicación interna |
+| Security Group | curso-ec2-sg (sg-048da8f1f89daf923) | Firewall virtual |
+| Key Pair | curso-ec2-key | Autenticación SSH |
+
+Datos adicionales de la instancia:
+
+- Instance ID: i-0f2fd7baf1f67db952
+- Hostname: ip-172-31-34-74
+- Sistema operativo: Ubuntu 24.04.5 LTS
+- Kernel: 7.0.0-1014-aws
+- Interfaz de red: ens5
+- Volumen raíz: 15G (16 GiB gp3)
+- Memoria: 909Mi total
+
+== Reto ==
+
+¿Qué sucede desde que se presiona Launch Instance hasta que se obtiene
+acceso por SSH?
+
+Al presionar Launch Instance, EC2 toma la AMI seleccionada y crea un volumen
+EBS raíz a partir de ella, elige el Instance Type y lanza la instancia en la
+subnet y Availability Zone indicadas. Se crea una interfaz de red con IP
+privada y, como se habilitó la IP pública, también se asigna una IP pública.
+El Security Group se asocia a la instancia y solo permite el puerto 22 desde
+mi IP. El sistema arranca, cloud-init ejecuta la inicialización y el servicio
+SSH queda escuchando. Cuando ejecuto ssh, el cliente y el servidor negocian
+la sesión, el servidor verifica que mi clave privada corresponda a la clave
+pública registrada en el key pair y abre la shell. El tráfico pasa por la
+VPC, la subnet, la tabla de rutas, el Internet Gateway y el Security Group
+antes de llegar a la instancia.

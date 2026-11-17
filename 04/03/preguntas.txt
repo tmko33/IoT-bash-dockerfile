@@ -1,0 +1,102 @@
+Workshop 3 — Docker en EC2 y despliegue de una aplicación
+Curso: Computación en la Nube e Internet de las Cosas
+Fecha: 2026-11-17
+
+== Arquitectura desplegada ==
+
+Internet
+   |
+   v
+Security Group (TCP 80)
+   |
+   v
+EC2 (Ubuntu 24.04)
+   |
+   v
+Docker Compose
+   |
+   +--> Nginx :80
+          |
+          v
+       Flask :5000
+
+El usuario final entra solamente por http://54.152.85.71. Nginx recibe la
+petición y la reenvía al contenedor de Flask por la red interna de Docker.
+
+== Flujo de una petición ==
+
+1. El navegador del usuario resuelve la IP pública 54.152.85.71 y envía una
+   petición HTTP al puerto 80.
+2. El Security Group de la instancia permite TCP 80 desde el origen
+   configurado; si el puerto no está permitido, la petición nunca llega.
+3. La petición entra a la EC2 y Docker la redirige al contenedor de Nginx,
+   porque el compose publica el puerto 80 del host hacia el 80 del
+   contenedor.
+4. Nginx, dentro de la red de Compose, resuelve el nombre del servicio api y
+   hace proxy_pass a http://api:5000.
+5. Flask recibe la petición en el puerto 5000, ejecuta la función
+   correspondiente y devuelve JSON.
+6. La respuesta viaja de vuelta: Flask -> Nginx -> Docker -> EC2 -> Internet
+   -> navegador.
+
+El puerto 5000 de Flask no se publica en el host; solo se expone dentro de la
+red de Compose. Así, el único punto de entrada público es Nginx en el 80.
+
+== Diferencia entre el host EC2 y el contenedor ==
+
+La EC2 es la máquina virtual: tiene su propio kernel, su hostname
+(ip-172-31-34-74), su IP privada (172.31.34.74) y ejecuta el daemon de Docker.
+El contenedor es un proceso aislado que comparte el kernel del host, pero
+tiene su propio filesystem, su propia interfaz de red y su propio hostname
+(el ID del contenedor). Por eso, dentro del contenedor, localhost se refiere
+al propio contenedor, no a la EC2. Para comunicarse con otro contenedor se
+usa el nombre del servicio en Compose (api), y para llegar desde el host se
+usa la IP pública o el puerto publicado.
+
+== Reto: hostname del contenedor, hostname de EC2 y hora ==
+
+Una forma de resolverlo es modificar app.py para devolver:
+
+    import os
+    import socket
+    from datetime import datetime, timezone
+    from flask import Flask, jsonify
+
+    app = Flask(__name__)
+
+    @app.get("/")
+    def home():
+        return jsonify({
+            "message": "Hola desde EC2",
+            "container_hostname": socket.gethostname(),
+            "ec2_hostname": os.getenv("EC2_HOSTNAME", "desconocido"),
+            "time": datetime.now(timezone.utc).isoformat()
+        })
+
+Y pasar el hostname de la EC2 como variable de entorno en docker-compose.yml:
+
+    services:
+      api:
+        build: ./app
+        container_name: api
+        environment:
+          EC2_HOSTNAME: ip-172-31-34-74
+
+El hostname del contenedor cambia si se recrea el contenedor; el hostname de
+la EC2 permanece mientras la instancia no se reemplace. La hora se genera en
+el momento de la petición, no al construir la imagen.
+
+En la ejecución de este laboratorio, la respuesta real fue:
+
+    container_hostname = 6c32670796b2
+    ec2_hostname       = ip-172-31-34-74
+    time               = 2026-11-17T04:49:29.290667+00:00
+
+== Conclusión ==
+
+Docker en EC2 permite empaquetar la aplicación y sus dependencias, mientras
+que Nginx actúa como reverse proxy y único punto de entrada. La separación
+entre host y contenedor es clave: el host aporta el kernel, la red y el
+almacenamiento; el contenedor aporta un entorno reproducible para la
+aplicación. El Security Group sigue siendo la primera barrera de seguridad y
+solo debe permitir los puertos necesarios.

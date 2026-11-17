@@ -1,0 +1,157 @@
+Workshop 5 — Automatización de EC2 con User Data
+Curso: Computación en la Nube e Internet de las Cosas
+Fecha: 2026-11-17
+Instancia: curso-ec2-userdata (i-07740a99b633bbb5f)
+Region: us-east-1
+Availability Zone: us-east-1c
+AMI: ami-08b275ac6cc5dbefb (Ubuntu Server 24.04 LTS 24.04.5)
+Instance Type: t3.micro
+Public IP: 54.84.106.11
+Private IP: 172.31.32.93
+Hostname: ip-172-31-32-93
+Security Group: curso-ec2-sg
+
+== ¿Qué es User Data? ==
+
+User Data es un script o conjunto de instrucciones que EC2 entrega a la
+instancia en el primer arranque. En Ubuntu lo ejecuta cloud-init como root.
+Sirve para provisionar el servidor sin intervención manual: actualizar
+paquetes, instalar software, crear archivos de configuración, habilitar
+servicios o desplegar una aplicación.
+
+Los logs de ejecución quedan en:
+
+    /var/log/cloud-init-output.log
+    /var/log/cloud-init.log
+
+Se puede ver el estado con:
+
+    cloud-init status --long
+
+User Data se ejecuta en el first boot. No es un sistema de configuration
+management para cambios continuos; para eso se usan herramientas como
+Ansible, AWS Systems Manager, Terraform o imágenes preconstruidas (Packer).
+
+== Script usado ==
+
+    #!/bin/bash
+    set -euxo pipefail
+
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
+
+    systemctl enable nginx
+    systemctl start nginx
+
+    cat > /var/www/html/index.html <<'EOFHTML'
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>EC2 + User Data</title>
+    </head>
+    <body>
+      <h1>Servidor provisionado automáticamente</h1>
+      <p>EC2 + User Data</p>
+    </body>
+    </html>
+    EOFHTML
+
+El script se pega en Launch Instance -> Advanced details -> User data.
+La instancia debe tener el puerto 80 permitido en el Security Group.
+
+== Comparación: configuración manual vs User Data ==
+
+| Enfoque | Configuración manual | User Data |
+|---|---|---|
+| Repetibilidad | Baja: depende de que la persona repita los mismos pasos | Alta: el mismo script produce el mismo resultado en cada instancia |
+| Tiempo | Mayor: hay que conectarse, instalar y configurar interactivamente | Menor: se ejecuta solo durante el arranque, sin intervención |
+| Errores humanos | Altos: se pueden olvidar pasos, escribir mal un comando o saltarse una actualización | Bajos: el script queda versionado y se puede revisar |
+| Documentación | Vive en notas, memoria o capturas dispersas | El script es documentación ejecutable |
+| Automatización | No | Sí: se integra con Terraform, CloudFormation, CI/CD o Auto Scaling |
+| Consistencia | Cada servidor puede quedar distinto | Todos los servidores parten de la misma definición |
+| Recuperación | Si la instancia falla, hay que repetir todo a mano | Se lanza una instancia nueva y se configura sola |
+
+== ¿Qué tareas convendría automatizar en una arquitectura real? ==
+
+Sí conviene automatizar:
+
+- Actualizaciones de seguridad y parches del sistema operativo.
+- Instalación de paquetes base (curl, ca-certificates, agentes de monitoreo).
+- Configuración de SSH, usuarios, sudoers y claves.
+- Instalación de Docker, runtime de la aplicación y dependencias.
+- Configuración de Nginx, systemd, logrotate y variables de entorno.
+- Registro en CloudWatch, agentes de seguridad y backups.
+- Despliegue inicial de la aplicación o descarga de la imagen desde ECR.
+- Endurecimiento básico: deshabilitar login por contraseña, habilitar firewall,
+  limitar servicios y puertos.
+
+No conviene poner en User Data:
+
+- Contraseñas, tokens o claves privadas en texto plano. User Data es visible
+  para la instancia y para quien tenga permisos sobre ella; usar Secrets
+  Manager, Parameter Store o IAM Roles.
+- Datos de estado o información que deba persistir fuera de la instancia.
+- Ajustes manuales de debugging que no se van a repetir.
+- Scripts gigantes o no idempotentes. User Data tiene un límite de 16 KB y
+  debe poder ejecutarse de forma segura si se relanza la instancia.
+
+== Reto: User Data + Docker + contenedor ==
+
+El script `user_data_reto.sh` instala Docker y deja un contenedor Nginx
+sirviendo una página personalizada:
+
+    #!/bin/bash
+    set -euxo pipefail
+
+    apt-get update -y
+    apt-get install -y ca-certificates curl
+
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    chmod a+r /etc/apt/keyrings/docker.asc
+
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+
+    apt-get update -y
+    DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    systemctl enable --now docker
+
+    mkdir -p /var/www/html
+    cat > /var/www/html/index.html <<'EOFHTML'
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <title>EC2 + User Data + Docker</title>
+    </head>
+    <body>
+      <h1>Servidor provisionado automáticamente</h1>
+      <p>EC2 + User Data + Docker</p>
+    </body>
+    </html>
+    EOFHTML
+
+    docker run -d --name web -p 80:80 -v /var/www/html:/usr/share/nginx/html:ro nginx:alpine
+
+Resultado esperado:
+
+    Nueva EC2
+       |
+    User Data
+       |
+    Docker
+       |
+    Contenedor Nginx
+       |
+    Aplicación accesible por HTTP
+
+== Conclusión ==
+
+User Data convierte el arranque de una instancia en un proceso reproducible:
+el servidor se configura solo, sin depender de que alguien se conecte por SSH
+a repetir comandos. Para el laboratorio es ideal para instalar Nginx o Docker
+y dejar una aplicación lista. En producción se combina con IAM Roles,
+Secrets Manager, CloudWatch, Auto Scaling y herramientas de configuration
+management para lograr servidores inmutables y reproducibles.
