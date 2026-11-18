@@ -88,34 +88,62 @@ curl.exe http://localhost:8080/equipos
 
 Debe devolver el equipo `LAP-0010`.
 
+> **Importante en PowerShell:** `curl.exe -d '{"clave":"valor"}'` puede perder
+> las comillas internas y enviar JSON inválido. Para los POST usa
+> `Invoke-RestMethod` con hashtables (recomendado) o
+> `curl.exe --data-binary "@archivo.json"`.
+
 Crea un empleado:
 
 ```powershell
-curl.exe -X POST http://localhost:8080/empleados -H "Content-Type: application/json" -d '{"nombre":"Laura Díaz","correo":"laura@empresa.com","departamento":"Operaciones"}'
+$body = @{
+    nombre = "Laura Díaz"
+    correo = "laura@empresa.com"
+    departamento = "Operaciones"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8080/empleados" -Method Post -ContentType "application/json" -Body $body | ConvertTo-Json -Depth 5
 ```
 
 Crea un equipo:
 
 ```powershell
-curl.exe -X POST http://localhost:8080/equipos -H "Content-Type: application/json" -d '{"codigo_interno":"LAP-0011","tipo":"Laptop","marca":"Dell","modelo":"Latitude 5440","numero_serie":"XYZ987654","estado":"DISPONIBLE"}'
+$body = @{
+    codigo_interno = "LAP-0011"
+    tipo = "Laptop"
+    marca = "Dell"
+    modelo = "Latitude 5440"
+    numero_serie = "XYZ987654"
+    estado = "DISPONIBLE"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8080/equipos" -Method Post -ContentType "application/json" -Body $body | ConvertTo-Json -Depth 5
 ```
 
 Asigna el equipo 2 al empleado 3:
 
 ```powershell
-curl.exe -X POST http://localhost:8080/equipos/2/asignar -H "Content-Type: application/json" -d '{"empleado_id":3}'
+$body = @{ empleado_id = 3 } | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8080/equipos/2/asignar" -Method Post -ContentType "application/json" -Body $body | ConvertTo-Json -Depth 5
 ```
 
 Registra un mantenimiento:
 
 ```powershell
-curl.exe -X POST http://localhost:8080/equipos/1/mantenimientos -H "Content-Type: application/json" -d '{"tipo":"Preventivo","descripcion":"Limpieza y actualización","costo":120000}'
+$body = @{
+    tipo = "Preventivo"
+    descripcion = "Limpieza y actualización"
+    costo = 120000
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8080/equipos/1/mantenimientos" -Method Post -ContentType "application/json" -Body $body | ConvertTo-Json -Depth 5
 ```
 
 Consulta el historial:
 
 ```powershell
-curl.exe http://localhost:8080/equipos/1/historial
+Invoke-RestMethod -Uri "http://localhost:8080/equipos/1/historial" | ConvertTo-Json -Depth 5
 ```
 
 Respuesta esperada, aproximada:

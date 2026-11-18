@@ -89,7 +89,7 @@ def list_employees():
 
 @app.post("/empleados")
 def create_employee():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(force=True, silent=True) or {}
     if not data.get("nombre") or not data.get("correo"):
         return jsonify({"error": "nombre y correo son obligatorios"}), 400
 
@@ -157,7 +157,7 @@ def list_equipment():
 
 @app.post("/equipos")
 def create_equipment():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(force=True, silent=True) or {}
     if not data.get("codigo_interno") or not data.get("tipo"):
         return jsonify({"error": "codigo_interno y tipo son obligatorios"}), 400
 
@@ -198,7 +198,7 @@ def get_equipment(equipment_id):
 
 @app.put("/equipos/<int:equipment_id>")
 def update_equipment(equipment_id):
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(force=True, silent=True) or {}
 
     with get_db() as conn, conn.cursor() as cur:
         cur.execute("""
@@ -236,7 +236,7 @@ def update_equipment(equipment_id):
 
 @app.post("/equipos/<int:equipment_id>/asignar")
 def assign_equipment(equipment_id):
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(force=True, silent=True) or {}
     employee_id = data.get("empleado_id")
     if not employee_id:
         return jsonify({"error": "empleado_id es obligatorio"}), 400
@@ -283,7 +283,17 @@ def assign_equipment(equipment_id):
 
 @app.post("/equipos/<int:equipment_id>/mantenimientos")
 def create_maintenance(equipment_id):
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(force=True, silent=True) or {}
+
+    if not data.get("tipo"):
+        return jsonify({"error": "tipo es obligatorio"}), 400
+
+    cost = data.get("costo")
+    if cost is not None:
+        try:
+            cost = float(cost)
+        except (TypeError, ValueError):
+            return jsonify({"error": "costo debe ser numérico"}), 400
 
     with get_db() as conn, conn.cursor() as cur:
         cur.execute("SELECT id, internal_code FROM equipment WHERE id = %s", (equipment_id,))
@@ -303,7 +313,7 @@ def create_maintenance(equipment_id):
             equipment_id,
             data.get("tipo"),
             data.get("descripcion"),
-            data.get("costo")
+            cost
         ))
         row = cur.fetchone()
         conn.commit()
